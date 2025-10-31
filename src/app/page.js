@@ -1,65 +1,117 @@
-import Image from "next/image";
+// src/app/page.js
+'use client'
+import { useState, useMemo } from "react"
+import { useAuth } from "./hooks/useAuth"
+import { usePosts } from "./hooks/usePosts"
+import SidebarRight from "./components/SidebarRight"
+import SidebarLeft from "./components/SidebarLeft"
+import PostsLoading from "./components/PostsLoading"
+import AuthGuard from "./components/AuthGuard"
+import FilterBar from "./components/FilterBar"
+import EmptyState from "./components/EmptyState"
+import PostsList from "./components/PostsList"
+import Layout from "./components/Layout"
+import LoadingSpinner from "./components/Loading"
 
-export default function Home() {
+export default function HomePage() {
+  const { user, isCheckingAuth } = useAuth()
+  const {
+    posts,
+    isLoading,
+    likedPosts,
+    updatePostLikes,
+    updateLikedPosts,
+    deletePost // استخدم الدالة الجديدة من usePosts
+  } = usePosts(user)
+
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("")
+
+  // دالة handleLike
+  const handleLike = async (postId, newLikesCount, newLikedState) => {
+    try {
+      updateLikedPosts(postId, newLikedState)
+      updatePostLikes(postId, newLikesCount)
+    } catch (error) {
+    }
+  }
+
+  // دالة حذف البوست - استخدم deletePost من usePosts
+  const handlePostDelete = (postId) => {
+    deletePost(postId) // استدعاء الدالة من usePosts
+  }
+
+  // تصفية الخواطر
+  const filteredPosts = useMemo(() => {
+    return posts.filter(post => {
+      const matchesSearch = searchTerm === "" ||
+        post.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        post.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+
+      const matchesCategory = selectedCategory === "" || post.category === selectedCategory
+
+      return matchesSearch && matchesCategory
+    })
+  }, [posts, searchTerm, selectedCategory])
+
+  // إعادة تعيين الفلاتر
+  const resetFilters = () => {
+    setSearchTerm("")
+    setSelectedCategory("")
+  }
+
+  // حالة التحميل
+  if (isCheckingAuth) {
+    return <LoadingSpinner message="جاري التحقق من المصادقة..." />
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.js file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <AuthGuard user={user}>
+      <Layout
+        leftSidebar={
+          <SidebarLeft
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+          />
+        }
+        rightSidebar={<SidebarRight />}
+      >
+        {/* حالة التحميل */}
+        {isLoading ? (
+          <PostsLoading />
+        ) : (
+          <>
+            {/* شريط الفلاتر */}
+            <FilterBar
+              searchTerm={searchTerm}
+              selectedCategory={selectedCategory}
+              filteredPosts={filteredPosts}
+              totalPosts={posts.length}
+              onResetFilters={resetFilters}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+
+            {/* عرض الخواطر */}
+            {filteredPosts.length === 0 ? (
+              <EmptyState
+                searchTerm={searchTerm}
+                selectedCategory={selectedCategory}
+                user={user}
+                onResetFilters={resetFilters}
+              />
+            ) : (
+              <PostsList
+                posts={filteredPosts}
+                likedPosts={likedPosts}
+                user={user}
+                onLike={handleLike}
+                onPostDelete={handlePostDelete}
+              />
+            )}
+          </>
+        )}
+      </Layout>
+    </AuthGuard>
+  )
 }

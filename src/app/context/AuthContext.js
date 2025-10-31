@@ -21,34 +21,36 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         // جلب حالة المستخدم الحالي
         const getCurrentUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-            setLoading(false);
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                if (error) throw error;
+                setUser(user);
+            } catch (error) {
+                console.error('Error getting user:', error);
+                setUser(null);
+            } finally {
+                setLoading(false);
+            }
         };
 
         getCurrentUser();
 
-        // الاستماع لتغيرات المصادقة
+        // الاستماع لتغيرات المصادقة - بدون إعادة توجيه
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
+                console.log('Auth event:', event);
                 setUser(session?.user || null);
                 setLoading(false);
 
-                if (event === 'SIGNED_IN') {
-                    // تحديث الصفحة الحالية
-                    router.refresh();
-                }
-
-                if (event === 'SIGNED_OUT') {
-                    router.push('/');
-                }
+                // إزالة الـ router.push من هنا علشان مايحصلش تعارض
+                // التسليم لصفحات الـ auth نفسها تتعامل مع الـ routing
             }
         );
 
         return () => {
-            subscription.unsubscribe();
+            subscription?.unsubscribe();
         };
-    }, [router]);
+    }, [router]); // إزالة router من dependencies إذا مش محتاجينه
 
     const value = {
         user,

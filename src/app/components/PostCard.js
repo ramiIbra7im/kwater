@@ -3,7 +3,8 @@
 import Image from "next/image";
 import {
     FaHeart, FaRegHeart, FaShare, FaBookmark, FaRegBookmark, FaEye,
-    FaBrain, FaPrayingHands, FaSadTear, FaLaugh, FaLightbulb, FaFlag
+    FaBrain, FaPrayingHands, FaSadTear, FaLaugh, FaLightbulb, FaFlag,
+    FaCalendar
 } from "react-icons/fa";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../lib/supabaseClient";
@@ -300,7 +301,7 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
                                     {post.user?.is_owner && <OwnerBadge />}
                                 </div>
                                 <div className="flex items-center gap-2 text-white/80 text-xs">
-                                    <span>📅 {formatDate(post.created_at)}</span>
+                                    <span className="flex"><FaCalendar /> {formatDate(post.created_at)}  </span>
                                 </div>
                             </div>
                         </div>
@@ -339,7 +340,7 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
 
             {/* محتوى الخاطرة */}
             <div className="p-6 relative">
-                <div className="absolute top-0 left-0 w-16 h-16 bg-gradient-to-br from-amber-50 to-orange-50 rounded-br-2xl opacity-40"></div>
+                <div className="absolute top-0 left-0 w-16 h-16 bg-linear-to-br from-amber-50 to-orange-50 rounded-br-2xl opacity-40"></div>
 
                 <div className="relative z-10">
                     <p className="text-gray-800 leading-relaxed text-base font-normal whitespace-pre-line mb-4 text-right">
@@ -384,7 +385,7 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
                         onClick={handleLike}
                         disabled={isLoading}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all duration-300 ${liked
-                            ? "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-md transform -translate-y-0.5"
+                            ? "bg-linear-to-r from-red-500 to-pink-500 text-white shadow-md transform -translate-y-0.5"
                             : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300"
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
@@ -414,7 +415,7 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
             </div>
 
             {/* خط زخرفي في الأسفل */}
-            <div className="h-1 bg-gradient-to-r from-amber-200 via-orange-200 to-amber-200 opacity-60"></div>
+            <div className="h-1 bg-linear-to-r from-amber-200 via-orange-200 to-amber-200 opacity-60"></div>
 
             {/* مودال المشاركة */}
             <ShareModal

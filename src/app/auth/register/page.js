@@ -84,7 +84,7 @@ export default function Register() {
                 options: {
                     emailRedirectTo: `${window.location.origin}/auth/callback`,
                     data: {
-                        full_name: formData.fullName
+                        // full_name: formData.fullName
                     }
                 }
             });
@@ -100,7 +100,7 @@ export default function Register() {
                     .insert([
                         {
                             id: authData.user.id,
-                            full_name: formData.fullName,
+                            // full_name: formData.fullName,
                             email: formData.email,
                             profile_completed: false
                         }
@@ -155,7 +155,7 @@ export default function Register() {
                         )}
 
                         <div className="space-y-4">
-                            <div>
+                            {/* <div>
                                 <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
                                     الاسم الكامل
                                 </label>
@@ -171,7 +171,7 @@ export default function Register() {
                                     placeholder="الاسم بالكامل"
                                 />
                                 {errors.fullName && <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>}
-                            </div>
+                            </div> */}
 
                             <div>
                                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">

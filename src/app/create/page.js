@@ -54,25 +54,36 @@ export default function CreatePost() {
     }
 
     const removeImage = () => {
+        if (imagePreview) {
+            URL.revokeObjectURL(imagePreview)
+        }
         setImageFile(null)
         setImagePreview("")
     }
 
     const uploadImageToStorage = async (file, userId) => {
-        const fileExt = file.name.split('.').pop()
-        const fileName = `posts/${userId}/${Date.now()}.${fileExt}`
+        try {
+            const fileExt = file.name.split('.').pop()
+            const fileName = `posts/${userId}/${Date.now()}.${fileExt}`
 
-        const { error: uploadError } = await supabase.storage
-            .from('post-images')
-            .upload(fileName, file)
+            const { error: uploadError } = await supabase.storage
+                .from('post-images')
+                .upload(fileName, file)
 
-        if (uploadError) throw uploadError
+            if (uploadError) {
+                console.error('Upload error:', uploadError)
+                throw uploadError
+            }
 
-        const { data } = supabase.storage
-            .from('post-images')
-            .getPublicUrl(fileName)
+            const { data } = supabase.storage
+                .from('post-images')
+                .getPublicUrl(fileName)
 
-        return data.publicUrl
+            return data.publicUrl
+        } catch (error) {
+            console.error('Image upload failed:', error)
+            throw error
+        }
     }
 
     const handleSubmit = async (e) => {
@@ -91,8 +102,8 @@ export default function CreatePost() {
         setIsLoading(true)
 
         try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) {
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
+            if (userError || !user) {
                 toast.error("يجب تسجيل الدخول أولاً")
                 router.push('/auth/login')
                 return
@@ -100,10 +111,16 @@ export default function CreatePost() {
 
             let imageUrl = ""
             if (imageFile) {
-                imageUrl = await uploadImageToStorage(imageFile, user.id)
+                try {
+                    imageUrl = await uploadImageToStorage(imageFile, user.id)
+                } catch (uploadError) {
+                    toast.error("فشل في رفع الصورة")
+                    setIsLoading(false)
+                    return
+                }
             }
 
-            const { error } = await supabase
+            const { error: insertError } = await supabase
                 .from('posts')
                 .insert([
                     {
@@ -116,17 +133,30 @@ export default function CreatePost() {
                     }
                 ])
 
-            if (error) throw error
+            if (insertError) {
+                console.error('Insert error:', insertError)
+                throw insertError
+            }
 
             toast.success("تم نشر الخاطرة بنجاح!")
             router.push('/')
 
         } catch (error) {
+            console.error('Create post error:', error)
             toast.error("حدث خطأ أثناء نشر الخاطرة")
         } finally {
             setIsLoading(false)
         }
     }
+
+    // تنظيف الـ URLs عند unmount
+    useState(() => {
+        return () => {
+            if (imagePreview) {
+                URL.revokeObjectURL(imagePreview)
+            }
+        }
+    })
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 py-8">

@@ -7,7 +7,7 @@ export async function middleware(req) {
 
     const { data: { session } } = await supabase.auth.getSession()
 
-    const protectedPaths = ['/profile', '/create', '/complete-profile']
+    const protectedPaths = ['/profile', '/Create', '/Complete-account']
     const isProtectedPath = protectedPaths.some(path =>
         req.nextUrl.pathname.startsWith(path)
     )
@@ -29,8 +29,8 @@ export async function middleware(req) {
 export const config = {
     matcher: [
         '/profile/:path*',
-        '/create/:path*',
-        '/complete-profile',
+        '/Create/:path*',
+        '/Complete-account',
         '/auth/login',
         '/auth/register',
     ],

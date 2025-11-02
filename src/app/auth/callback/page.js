@@ -94,7 +94,7 @@ export default function VerifyEmailCallback() {
                 }
 
                 setTimeout(() => {
-                    router.push("/complete-profile");
+                    router.push("/Complete-account");
                 }, 2000);
 
             } catch (error) {

@@ -1,18 +1,15 @@
-// app/layout.js
-"use client";
 import "./globals.css";
 import NavBar from "./components/NavBar";
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from "./context/AuthContext";
+export const metadata = {
+  title: "خاطرتي",
+  description: "منصة لكتابة ومشاركة الخواطر",
+};
 
-// يمكنك وضع الـ metadata في ملف منفصل أو استخدام generateMetadata
 export default function RootLayout({ children }) {
   return (
     <html lang="ar" dir="rtl">
-      <head>
-        <title>خاطرتي</title>
-        <meta name="description" content="منصة لكتابة ومشاركة الخواطر" />
-      </head>
       <body className="bg-gray-50 text-gray-800">
         <AuthProvider>
           <NavBar />
@@ -20,6 +17,7 @@ export default function RootLayout({ children }) {
           <Toaster
             position="top-right"
             toastOptions={{
+              // الشكل العام لكل التوستات
               style: {
                 background: '#333',
                 color: '#fff',
@@ -27,15 +25,17 @@ export default function RootLayout({ children }) {
                 fontSize: '15px',
                 padding: '12px 18px',
               },
+              // خصائص خاصة بـ success
               success: {
                 iconTheme: {
-                  primary: '#4ade80',
+                  primary: '#4ade80', // أخضر فاتح
                   secondary: '#fff',
                 },
               },
+              // خصائص خاصة بـ error
               error: {
                 iconTheme: {
-                  primary: '#ef4444',
+                  primary: '#ef4444', // أحمر
                   secondary: '#fff',
                 },
               },

@@ -1,50 +1,49 @@
-// src/app/page.js
 'use client'
 import { useState, useMemo } from "react"
-import { useAuth } from "./hooks/useAuth"
 import { usePosts } from "./hooks/usePosts"
 import SidebarRight from "./components/SidebarRight"
 import SidebarLeft from "./components/SidebarLeft"
 import PostsLoading from "./components/PostsLoading"
-import AuthGuard from "./components/AuthGuard"
 import FilterBar from "./components/FilterBar"
 import EmptyState from "./components/EmptyState"
 import PostsList from "./components/PostsList"
 import Layout from "./components/Layout"
 import LoadingSpinner from "./components/Loading"
 
+// ✅ أضف هذا السطر 👇
+import { useAuth } from "./context/AuthContext"
+
 export default function HomePage() {
-  const { user, isCheckingAuth } = useAuth()
+  // ✅ غير الاسم هنا كمان (الـ Context بيستخدم loading بدل isCheckingAuth)
+  const { user, loading } = useAuth()
+
   const {
     posts,
     isLoading,
     likedPosts,
     updatePostLikes,
     updateLikedPosts,
-    deletePost // استخدم الدالة الجديدة من usePosts
+    deletePost
   } = usePosts(user)
 
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
 
-  // دالة handleLike
   const handleLike = async (postId, newLikesCount, newLikedState) => {
     try {
       updateLikedPosts(postId, newLikedState)
       updatePostLikes(postId, newLikesCount)
-    } catch (error) {
-    }
+    } catch (error) { }
   }
 
-  // دالة حذف البوست - استخدم deletePost من usePosts
   const handlePostDelete = (postId) => {
-    deletePost(postId) // استدعاء الدالة من usePosts
+    deletePost(postId)
   }
 
-  // تصفية الخواطر
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
-      const matchesSearch = searchTerm === "" ||
+      const matchesSearch =
+        searchTerm === "" ||
         post.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         post.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -54,64 +53,58 @@ export default function HomePage() {
     })
   }, [posts, searchTerm, selectedCategory])
 
-  // إعادة تعيين الفلاتر
   const resetFilters = () => {
     setSearchTerm("")
     setSelectedCategory("")
   }
 
-  // حالة التحميل
-  if (isCheckingAuth) {
+  // ✅ استخدم loading بدل isCheckingAuth
+  if (loading) {
     return <LoadingSpinner message="جاري التحقق من المصادقة..." />
   }
 
   return (
-    <AuthGuard user={user}>
-      <Layout
-        leftSidebar={
-          <SidebarLeft
+    <Layout
+      leftSidebar={
+        <SidebarLeft
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
+        />
+      }
+      rightSidebar={<SidebarRight />}
+    >
+      {isLoading ? (
+        <PostsLoading />
+      ) : (
+        <>
+          <FilterBar
             searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
             selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
+            filteredPosts={filteredPosts}
+            totalPosts={posts.length}
+            onResetFilters={resetFilters}
           />
-        }
-        rightSidebar={<SidebarRight />}
-      >
-        {/* حالة التحميل */}
-        {isLoading ? (
-          <PostsLoading />
-        ) : (
-          <>
-            {/* شريط الفلاتر */}
-            <FilterBar
+
+          {filteredPosts.length === 0 ? (
+            <EmptyState
               searchTerm={searchTerm}
               selectedCategory={selectedCategory}
-              filteredPosts={filteredPosts}
-              totalPosts={posts.length}
+              user={user}
               onResetFilters={resetFilters}
             />
-
-            {/* عرض الخواطر */}
-            {filteredPosts.length === 0 ? (
-              <EmptyState
-                searchTerm={searchTerm}
-                selectedCategory={selectedCategory}
-                user={user}
-                onResetFilters={resetFilters}
-              />
-            ) : (
-              <PostsList
-                posts={filteredPosts}
-                likedPosts={likedPosts}
-                user={user}
-                onLike={handleLike}
-                onPostDelete={handlePostDelete}
-              />
-            )}
-          </>
-        )}
-      </Layout>
-    </AuthGuard>
+          ) : (
+            <PostsList
+              posts={filteredPosts}
+              likedPosts={likedPosts}
+              user={user}
+              onLike={handleLike}
+              onPostDelete={handlePostDelete}
+            />
+          )}
+        </>
+      )}
+    </Layout>
   )
 }

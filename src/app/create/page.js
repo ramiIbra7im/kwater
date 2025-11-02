@@ -6,6 +6,7 @@ import { supabase } from "../../lib/supabaseClient"
 import { useAuth } from "../context/AuthContext"
 import toast from "react-hot-toast"
 
+console.log("🚀 [CreatePost] Component Mounted");
 export default function CreatePost() {
     const router = useRouter()
     const { user, loading } = useAuth() // ✅ استخدام AuthContext
@@ -18,13 +19,19 @@ export default function CreatePost() {
     const [charCount, setCharCount] = useState(0)
     const maxChars = 500
 
-    // ✅ لو المستخدم مش مسجل خروج نرجعه
     useEffect(() => {
+        console.log("🔍 [CreatePost] Checking Auth State...");
+        console.log("➡️ loading:", loading);
+        console.log("➡️ user:", user);
+
         if (!loading && !user) {
-            toast.error("يجب تسجيل الدخول أولاً")
-            router.push("/auth/login")
+            console.warn("🚫 No user found, redirecting to login...");
+            toast.error("يجب تسجيل الدخول أولاً");
+            router.push("/auth/login");
+        } else if (!loading && user) {
+            console.log("✅ User found:", user.id);
         }
-    }, [user, loading, router])
+    }, [user, loading, router]);
 
     const categories = [
         { value: "", label: "اختر التصنيف" },

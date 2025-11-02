@@ -47,7 +47,7 @@ export default function NavBar() {
             { name: "الرئيسية", href: "/", icon: FaHome },
             { name: "اكتب خاطرة", href: "/Create", icon: FaPen },
             { name: "المحفوظات", href: "/saved", icon: FaBookmark },
-            { name: "صفحتي", href: "/Profile", icon: FaUser },
+            { name: "صفحتي", href: "/account", icon: FaUser },
         ]
         : [
             { name: "الرئيسية", href: "/", icon: FaHome },

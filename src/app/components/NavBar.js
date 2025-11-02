@@ -43,9 +43,9 @@ export default function NavBar() {
     const navItems = user
         ? [
             { name: "الرئيسية", href: "/", icon: FaHome },
-            { name: "اكتب خاطرة", href: "/create", icon: FaPen },
+            { name: "اكتب خاطرة", href: "/Create", icon: FaPen },
             { name: "المحفوظات", href: "/saved", icon: FaBookmark },
-            { name: "صفحتي", href: "/profile", icon: FaUser },
+            { name: "صفحتي", href: "/Profile", icon: FaUser },
         ]
         : [
             { name: "الرئيسية", href: "/", icon: FaHome },

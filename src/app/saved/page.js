@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { FaBookmark, FaHeart, FaEye } from "react-icons/fa"
 import { supabase } from "../../lib/supabaseClient"
 import toast from "react-hot-toast"
+import Image from "next/image"
 
 export default function SavedPosts() {
     const router = useRouter()
@@ -119,10 +120,12 @@ export default function SavedPosts() {
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl bg-gray-200 overflow-hidden">
-                                            <img
+                                            <Image
                                                 src={post.profiles?.avatar_url || "/default-avatar.png"}
                                                 alt={post.profiles?.full_name}
                                                 className="w-full h-full object-cover"
+                                                width={100}
+                                                height={100}
                                             />
                                         </div>
                                         <div>

@@ -35,13 +35,13 @@ export default function CreatePost() {
 
     const categories = [
         { value: "", label: "اختر التصنيف" },
-        { value: "رومانسي", label: "رومانسي 💖" },
-        { value: "فلسفي", label: "فلسفي 🤔" },
-        { value: "ديني", label: "ديني 🙏" },
-        { value: "حزين", label: "حزين 😢" },
-        { value: "ساخر", label: "ساخر 😄" },
-        { value: "ملهم", label: "ملهم ✨" },
-        { value: "وطني", label: "وطني 🇪🇬" }
+        { value: "رومانسي", label: "رومانسي " },
+        { value: "فلسفي", label: "فلسفي " },
+        { value: "ديني", label: "ديني " },
+        { value: "حزين", label: "حزين " },
+        { value: "ساخر", label: "ساخر " },
+        { value: "ملهم", label: "ملهم " },
+        { value: "وطني", label: "وطني" }
     ]
 
     const handleContentChange = (e) => {
@@ -162,7 +162,7 @@ export default function CreatePost() {
     if (!user) return null // ✅ لتجنب الوميض قبل التوجيه
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 py-8">
+        <div className="min-h-screen bg-amber-50 py-8">
             <div className="max-w-2xl mx-auto px-4">
                 <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-amber-200">
                     <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
@@ -210,7 +210,7 @@ export default function CreatePost() {
                             </select>
                         </div>
 
-                        <div>
+                        {/* <div>
                             <label className="block text-sm font-medium text-gray-700 mb-3">
                                 إضافة صورة (اختياري)
                             </label>
@@ -244,7 +244,7 @@ export default function CreatePost() {
                                     />
                                 </label>
                             )}
-                        </div>
+                        </div> */}
 
                         <div className="flex gap-3 pt-4">
                             <button

@@ -270,11 +270,11 @@ export default function ProfilePage() {
                                         {profile.is_owner && <OwnerBadge />}
                                     </div>
                                     <p className="text-gray-500">{profile.email}</p>
-                                    {profile.is_owner && (
+                                    {/* {profile.is_owner && (
                                         <p className="text-amber-600 font-medium text-sm mt-1">
                                             مؤسس ومنشئ الموقع
                                         </p>
-                                    )}
+                                    )} */}
                                 </div>
 
                                 <div className="flex gap-2">
@@ -386,12 +386,12 @@ export default function ProfilePage() {
                                         </span>
                                     </div>
                                     {/* إضافة معلومات الدور */}
-                                    {profile.is_owner && (
+                                    {/* {profile.is_owner && (
                                         <div className="flex justify-between items-center">
                                             <span className="text-gray-600">الدور:</span>
                                             <span className="text-amber-600 font-bold">صاحب الموقع</span>
                                         </div>
-                                    )}
+                                    )} */}
                                 </div>
                             </div>
                         </div>

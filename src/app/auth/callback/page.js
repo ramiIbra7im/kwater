@@ -4,39 +4,34 @@ import { useRouter } from "next/navigation";
 import { FaSpinner, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import { supabase } from "../../../lib/supabaseClient";
 
-export default function CallbackPage() {
+export default function VerifyEmailCallback() {
     const router = useRouter();
-    const [status, setStatus] = useState('loading');
-    const [message, setMessage] = useState('جاري التحقق من الحساب...');
+    const [status, setStatus] = useState('loading'); // loading, success, error
+    const [message, setMessage] = useState('جاري التحقق من رابط التفعيل...');
 
     useEffect(() => {
-        const handleAuth = async () => {
+        const handleCallback = async () => {
             try {
-                setStatus('loading');
-                setMessage('جاري معالجة بيانات المصادقة...');
-
-                // استخراج الـ token من الـ URL hash
-                const hash = window.location.hash.substring(1);
-                const params = new URLSearchParams(hash);
+                // استخرج الـ query params بدل hash (لينك تفعيل البريد)
+                const params = new URLSearchParams(window.location.search);
+                const type = params.get('type');
                 const accessToken = params.get('access_token');
                 const refreshToken = params.get('refresh_token');
 
-                if (accessToken) {
-                    // تعيين الجلسة باستخدام الـ tokens
-                    const { data: { session }, error } = await supabase.auth.setSession({
-                        access_token: accessToken,
-                        refresh_token: refreshToken
-                    });
+                if (type === 'signup_confirm') {
+                    setStatus('success');
+                    setMessage('تم تفعيل حسابك بنجاح!');
 
-                    if (error) {
-                        throw error;
-                    }
+                    if (accessToken) {
+                        // تسجيل الدخول تلقائي
+                        const { data: { session }, error } = await supabase.auth.setSession({
+                            access_token: accessToken,
+                            refresh_token: refreshToken
+                        });
 
-                    if (session?.user) {
-                        setStatus('success');
-                        setMessage('تم التحقق بنجاح! جاري توجيهك...');
+                        if (error) throw error;
 
-                        // التحقق من حالة الملف الشخصي
+                        // تحقق من حالة الملف الشخصي
                         const { data: profile } = await supabase
                             .from('profiles')
                             .select('profile_completed')
@@ -50,24 +45,19 @@ export default function CallbackPage() {
                                 router.push("/complete-profile");
                             }
                         }, 2000);
-                    } else {
-                        throw new Error('No session found');
                     }
+
                 } else {
-                    throw new Error('No access token found');
+                    throw new Error('رابط غير صالح');
                 }
 
             } catch (error) {
                 setStatus('error');
-                setMessage('حدث خطأ في المصادقة');
-
-                setTimeout(() => {
-                    router.push("/auth/login");
-                }, 3000);
+                setMessage('حدث خطأ في التفعيل. يمكنك تسجيل الدخول يدوياً.');
             }
-        };
+        }
 
-        handleAuth();
+        handleCallback();
     }, [router]);
 
     const getStatusIcon = () => {
@@ -124,9 +114,9 @@ export default function CallbackPage() {
                         </h2>
 
                         <p className="text-gray-600 mb-6 leading-relaxed">
-                            {status === 'loading' && 'نحن نعالج بيانات المصادقة، من فضلك انتظر...'}
-                            {status === 'success' && 'تمت المصادقة بنجاح! جاري توجيهك للصفحة المناسبة.'}
-                            {status === 'error' && 'سيتم توجيهك إلى صفحة تسجيل الدخول.'}
+                            {status === 'loading' && 'نحن نعالج رابط التفعيل، من فضلك انتظر...'}
+                            {status === 'success' && 'تم تفعيل حسابك!'}
+                            {status === 'error' && 'يمكنك تسجيل الدخول يدوياً.'}
                         </p>
 
                         {status === 'loading' && (
@@ -147,6 +137,15 @@ export default function CallbackPage() {
                             </div>
                         )}
 
+                        {status === 'error' && (
+                            <button
+                                onClick={() => router.push('/auth/login')}
+                                className="mt-4 bg-amber-500 text-white px-6 py-3 rounded-xl hover:bg-amber-600 transition font-medium"
+                            >
+                                تسجيل الدخول
+                            </button>
+                        )}
+
                         <div className="mt-6 p-4 bg-white/50 rounded-xl border border-white/80">
                             <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
                                 <span className="text-xs">🔒</span>
@@ -159,17 +158,19 @@ export default function CallbackPage() {
                     <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tr from-purple-500/10 to-transparent rounded-tr-3xl"></div>
                 </div>
 
-                <div className="text-center mt-6">
-                    <p className="text-sm text-gray-500">
-                        إذا لم يتم التوجيه تلقائياً،{' '}
-                        <button
-                            onClick={() => router.push('/auth/login')}
-                            className="text-blue-500 hover:text-blue-600 font-medium underline transition-colors"
-                        >
-                            انقر هنا
-                        </button>
-                    </p>
-                </div>
+                {status !== 'loading' && (
+                    <div className="text-center mt-6">
+                        <p className="text-sm text-gray-500">
+                            إذا لم يتم التوجيه تلقائياً،{' '}
+                            <button
+                                onClick={() => router.push('/auth/login')}
+                                className="text-blue-500 hover:text-blue-600 font-medium underline transition-colors"
+                            >
+                                انقر هنا
+                            </button>
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -290,7 +290,8 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
-                                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 border-2 border-white rounded-full shadow-lg"></div>
+                                {/* نقطة نشط الان */}
+                                {/* <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 border-2 border-white rounded-full shadow-lg"></div> */}
                             </div>
                             <div className="flex flex-col">
                                 {/* التعديل هنا فقط - أضف علامة صاحب الموقع */}

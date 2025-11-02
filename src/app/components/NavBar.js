@@ -9,7 +9,9 @@ import {
     FaHome,
     FaBars,
     FaTimes,
-    FaSignOutAlt
+    FaSignOutAlt,
+    FaEye,
+    FaHandHolding
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 
@@ -73,15 +75,14 @@ export default function NavBar() {
                         {/* الشعار */}
                         <Link href="/" className="flex items-center gap-2 group">
                             <div className="w-10 h-10 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
-                                <span className="text-white font-bold text-lg">✍️</span>
+                                <span className="text-white font-bold text-lg "><FaHandHolding className=" items-center flex" /></span>
                             </div>
                             <div className="flex flex-col">
                                 <span className="font-bold text-gray-900 text-xl leading-5">
                                     خاطرتي
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                    منصة الخواطر العربية
-                                </span>
+                                    اكتب ما يدور في ذهنك                                </span>
                             </div>
                         </Link>
 

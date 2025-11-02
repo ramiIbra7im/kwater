@@ -1,5 +1,5 @@
 'use client';
-import { FaHashtag, FaCompass, FaHeart, FaSun, FaMoon, FaStar, FaCoffee, FaSearch, FaFilter } from "react-icons/fa";
+import { FaHashtag, FaCompass, FaHeart, FaSun, FaMoon, FaStar, FaCoffee, FaSearch, FaFilter, FaCamera } from "react-icons/fa";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 
@@ -37,7 +37,7 @@ export default function SidebarRight({
                 { name: "فلسفي", value: "فلسفي", icon: FaSun, count: categoryCounts['فلسفي'] || 0 },
                 { name: "ديني", value: "ديني", icon: FaStar, count: categoryCounts['ديني'] || 0 },
                 { name: "حزين", value: "حزين", icon: FaMoon, count: categoryCounts['حزين'] || 0 },
-                { name: "ملهم", value: "ملهم", icon: FaMoon, count: categoryCounts['ملهم'] || 0 },
+                { name: "ملهم", value: "ملهم", icon: FaCamera, count: categoryCounts['ملهم'] || 0 },
                 { name: "ساخر", value: "ساخر", icon: FaCoffee, count: categoryCounts['ساخر'] || 0 },
             ];
 
@@ -50,7 +50,7 @@ export default function SidebarRight({
                 { name: "ديني", value: "ديني", icon: FaStar, count: 0 },
                 { name: "حزين", value: "حزين", icon: FaMoon, count: 0 },
                 { name: "ساخر", value: "ساخر", icon: FaCoffee, count: 0 },
-                { name: "ملهم", value: "ملهم", icon: FaCoffee, count: 0 },
+                { name: "ملهم", value: "ملهم", icon: FaCamera, count: 0 },
             ]);
         } finally {
             setIsLoading(false);

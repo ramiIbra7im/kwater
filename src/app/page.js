@@ -12,6 +12,7 @@ import LoadingSpinner from "./components/Loading"
 
 // ✅ أضف هذا السطر 👇
 import { useAuth } from "./context/AuthContext"
+import ProtectedRoute from "./components/ProtectedRoute"
 
 export default function HomePage() {
   // ✅ غير الاسم هنا كمان (الـ Context بيستخدم loading بدل isCheckingAuth)
@@ -64,47 +65,49 @@ export default function HomePage() {
   }
 
   return (
-    <Layout
-      leftSidebar={
-        <SidebarLeft
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          selectedCategory={selectedCategory}
-          setSelectedCategory={setSelectedCategory}
-        />
-      }
-      rightSidebar={<SidebarRight />}
-    >
-      {isLoading ? (
-        <PostsLoading />
-      ) : (
-        <>
-          <FilterBar
+    <ProtectedRoute>
+      <Layout
+        leftSidebar={
+          <SidebarLeft
             searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
             selectedCategory={selectedCategory}
-            filteredPosts={filteredPosts}
-            totalPosts={posts.length}
-            onResetFilters={resetFilters}
+            setSelectedCategory={setSelectedCategory}
           />
-
-          {filteredPosts.length === 0 ? (
-            <EmptyState
+        }
+        rightSidebar={<SidebarRight />}
+      >
+        {isLoading ? (
+          <PostsLoading />
+        ) : (
+          <>
+            <FilterBar
               searchTerm={searchTerm}
               selectedCategory={selectedCategory}
-              user={user}
+              filteredPosts={filteredPosts}
+              totalPosts={posts.length}
               onResetFilters={resetFilters}
             />
-          ) : (
-            <PostsList
-              posts={filteredPosts}
-              likedPosts={likedPosts}
-              user={user}
-              onLike={handleLike}
-              onPostDelete={handlePostDelete}
-            />
-          )}
-        </>
-      )}
-    </Layout>
+
+            {filteredPosts.length === 0 ? (
+              <EmptyState
+                searchTerm={searchTerm}
+                selectedCategory={selectedCategory}
+                user={user}
+                onResetFilters={resetFilters}
+              />
+            ) : (
+              <PostsList
+                posts={filteredPosts}
+                likedPosts={likedPosts}
+                user={user}
+                onLike={handleLike}
+                onPostDelete={handlePostDelete}
+              />
+            )}
+          </>
+        )}
+      </Layout>
+    </ProtectedRoute>
   )
 }

@@ -1,16 +1,28 @@
-// src/app/components/AuthGuard.js
+// components/AuthGuard.js
 'use client'
 import { useRouter } from "next/navigation"
 import { FaLock, FaSignInAlt } from "react-icons/fa"
+import { useAuth } from "../context/AuthContext"
 
-export default function AuthGuard({ children, user }) {
+export default function AuthGuard({ children }) {
     const router = useRouter()
+    const { user, loading } = useAuth()
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-600">جاري التحقق من المصادقة...</p>
+                </div>
+            </div>
+        )
+    }
 
     if (!user) {
         return (
             <div className="min-h-screen bg-gray-50">
                 <div className="flex justify-between gap-6 pt-6 px-4">
-                    {/* العمود الأوسط - رسالة الحماية */}
                     <div className="flex-1 max-w-2xl mx-auto">
                         <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-200">
                             <div className="text-6xl mb-4">

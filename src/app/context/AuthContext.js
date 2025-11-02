@@ -1,3 +1,4 @@
+// context/AuthContext.js
 'use client';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
@@ -18,44 +19,95 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
+    // دالة لتحقق من التوكن
+    const validateToken = async () => {
+        try {
+            const { data: { user }, error } = await supabase.auth.getUser();
+
+            if (error) {
+                // إذا كان التوكن منتهي الصلاحية، نقوم بتسجيل الخروج
+                await supabase.auth.signOut();
+                setUser(null);
+                return null;
+            }
+
+            return user;
+        } catch (error) {
+            console.error('Token validation error:', error);
+            return null;
+        }
+    };
+
     useEffect(() => {
-        // جلب حالة المستخدم الحالي
-        const getCurrentUser = async () => {
+        const initializeAuth = async () => {
             try {
-                const { data: { user }, error } = await supabase.auth.getUser();
-                if (error) throw error;
-                setUser(user);
+                setLoading(true);
+
+                // التحقق من وجود توكن في localStorage
+                if (typeof window !== 'undefined') {
+                    const token = localStorage.getItem('supabase.auth.token');
+                    if (token) {
+                        const validUser = await validateToken();
+                        setUser(validUser);
+                    } else {
+                        setUser(null);
+                    }
+                }
             } catch (error) {
-                console.error('Error getting user:', error);
+                console.error('Auth initialization error:', error);
                 setUser(null);
             } finally {
                 setLoading(false);
             }
         };
 
-        getCurrentUser();
+        initializeAuth();
 
-        // الاستماع لتغيرات المصادقة - بدون إعادة توجيه
+        // الاستماع لتغيرات المصادقة
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 console.log('Auth event:', event);
-                setUser(session?.user || null);
-                setLoading(false);
 
-                // إزالة الـ router.push من هنا علشان مايحصلش تعارض
-                // التسليم لصفحات الـ auth نفسها تتعامل مع الـ routing
+                if (event === 'SIGNED_IN' && session) {
+                    const validUser = await validateToken();
+                    setUser(validUser);
+                } else if (event === 'SIGNED_OUT') {
+                    setUser(null);
+                    // تنظيف localStorage
+                    if (typeof window !== 'undefined') {
+                        localStorage.removeItem('supabase.auth.token');
+                    }
+                } else if (event === 'TOKEN_REFRESHED') {
+                    const validUser = await validateToken();
+                    setUser(validUser);
+                }
+
+                setLoading(false);
             }
         );
 
         return () => {
             subscription?.unsubscribe();
         };
-    }, [router]); // إزالة router من dependencies إذا مش محتاجينه
+    }, []);
+
+    const signOut = async () => {
+        try {
+            await supabase.auth.signOut();
+            setUser(null);
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('supabase.auth.token');
+            }
+        } catch (error) {
+            console.error('Sign out error:', error);
+        }
+    };
 
     const value = {
         user,
         loading,
-        signOut: () => supabase.auth.signOut(),
+        signOut,
+        validateToken
     };
 
     return (

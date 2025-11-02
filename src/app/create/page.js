@@ -157,6 +157,8 @@ export default function CreatePost() {
             }
         }
     })
+    console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log('KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 py-8">

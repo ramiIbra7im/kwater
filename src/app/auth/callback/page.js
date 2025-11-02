@@ -1,41 +1,40 @@
 'use client'
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FaSpinner, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
-import { useAuth } from "../../context/AuthContext"; // اتأكد من مسار الـ context
 import { supabase } from "../../../lib/supabaseClient";
 
 export default function VerifyEmailCallback() {
     const router = useRouter();
-    const { setUser } = useAuth(); // نحتاج تحديث حالة المستخدم
-    const [status, setStatus] = useState('loading');
+    const [status, setStatus] = useState('loading'); // loading, success, error
     const [message, setMessage] = useState('جاري التحقق من رابط التفعيل...');
 
     useEffect(() => {
         const handleCallback = async () => {
             try {
                 const params = new URLSearchParams(window.location.search);
-                const code = params.get('code');
+                const code = params.get('code'); // ناخد الـ code بدل access_token
                 if (!code) throw new Error('رابط التفعيل غير صالح.');
 
                 setStatus('loading');
                 setMessage('جاري تفعيل حسابك...');
 
-                // ✅ استبدال code بـ session
-                const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+                // استبدال الكود بـ session
+                const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code);
                 if (error) throw error;
+                if (!session?.user) throw new Error('حدث خطأ أثناء التفعيل.');
 
-                setUser(data.session.user); // تحديث حالة المستخدم في AuthContext
                 setStatus('success');
                 setMessage('تم تفعيل حسابك بنجاح! جاري التوجيه...');
 
                 // التحقق من حالة الملف الشخصي
-                const { data: profile } = await supabase
+                const { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('profile_completed')
-                    .eq('id', data.session.user.id)
+                    .eq('id', session.user.id)
                     .single();
+
+                if (profileError) throw profileError;
 
                 setTimeout(() => {
                     if (profile && profile.profile_completed) {
@@ -46,20 +45,20 @@ export default function VerifyEmailCallback() {
                 }, 2000);
 
             } catch (error) {
-                console.error(error);
                 setStatus('error');
                 setMessage(error.message || 'حدث خطأ أثناء التفعيل.');
             }
         }
 
         handleCallback();
-    }, [router, setUser]);
+    }, [router]);
 
     const getStatusIcon = () => {
         switch (status) {
             case 'loading': return <FaSpinner className="animate-spin text-3xl text-blue-500" />;
             case 'success': return <FaCheckCircle className="text-3xl text-green-500" />;
             case 'error': return <FaExclamationTriangle className="text-3xl text-red-500" />;
+            default: return <FaSpinner className="animate-spin text-3xl text-blue-500" />;
         }
     };
 
@@ -68,6 +67,7 @@ export default function VerifyEmailCallback() {
             case 'loading': return 'border-blue-200 bg-blue-50';
             case 'success': return 'border-green-200 bg-green-50';
             case 'error': return 'border-red-200 bg-red-50';
+            default: return 'border-gray-200 bg-gray-50';
         }
     };
 
@@ -97,6 +97,20 @@ export default function VerifyEmailCallback() {
                             {status === 'error' && 'يمكنك تسجيل الدخول يدوياً.'}
                         </p>
 
+                        {status === 'loading' && (
+                            <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+                                <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full animate-pulse"></div>
+                            </div>
+                        )}
+
+                        {status === 'loading' && (
+                            <div className="flex justify-center space-x-2 rtl:space-x-reverse">
+                                {[1, 2, 3].map((dot) => (
+                                    <div key={dot} className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${dot * 0.2}s` }}></div>
+                                ))}
+                            </div>
+                        )}
+
                         {status === 'error' && (
                             <button
                                 onClick={() => router.push('/auth/login')}
@@ -105,6 +119,13 @@ export default function VerifyEmailCallback() {
                                 تسجيل الدخول
                             </button>
                         )}
+
+                        <div className="mt-6 p-4 bg-white/50 rounded-xl border border-white/80">
+                            <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
+                                <span className="text-xs">🔒</span>
+                                بياناتك محمية ومشفرة بأعلى معايير الأمان
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

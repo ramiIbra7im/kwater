@@ -1,12 +1,15 @@
 'use client'
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { FaEdit, FaImage, FaSmile, FaPaperPlane, FaTimes } from "react-icons/fa"
 import { supabase } from "../../lib/supabaseClient"
+import { useAuth } from "../context/AuthContext"
 import toast from "react-hot-toast"
 
 export default function CreatePost() {
     const router = useRouter()
+    const { user, loading } = useAuth() // ✅ استخدام AuthContext
+
     const [content, setContent] = useState("")
     const [category, setCategory] = useState("")
     const [imageFile, setImageFile] = useState(null)
@@ -14,6 +17,14 @@ export default function CreatePost() {
     const [isLoading, setIsLoading] = useState(false)
     const [charCount, setCharCount] = useState(0)
     const maxChars = 500
+
+    // ✅ لو المستخدم مش مسجل خروج نرجعه
+    useEffect(() => {
+        if (!loading && !user) {
+            toast.error("يجب تسجيل الدخول أولاً")
+            router.push("/auth/login")
+        }
+    }, [user, loading, router])
 
     const categories = [
         { value: "", label: "اختر التصنيف" },
@@ -38,7 +49,7 @@ export default function CreatePost() {
         const file = e.target.files[0]
         if (file) {
             if (!file.type.startsWith('image/')) {
-                toast.warn("الرجاء اختيار صورة فقط")
+                toast.error("الرجاء اختيار صورة فقط")
                 return
             }
 
@@ -48,15 +59,12 @@ export default function CreatePost() {
             }
 
             setImageFile(file)
-            const previewUrl = URL.createObjectURL(file)
-            setImagePreview(previewUrl)
+            setImagePreview(URL.createObjectURL(file))
         }
     }
 
     const removeImage = () => {
-        if (imagePreview) {
-            URL.revokeObjectURL(imagePreview)
-        }
+        if (imagePreview) URL.revokeObjectURL(imagePreview)
         setImageFile(null)
         setImagePreview("")
     }
@@ -70,10 +78,7 @@ export default function CreatePost() {
                 .from('post-images')
                 .upload(fileName, file)
 
-            if (uploadError) {
-                console.error('Upload error:', uploadError)
-                throw uploadError
-            }
+            if (uploadError) throw uploadError
 
             const { data } = supabase.storage
                 .from('post-images')
@@ -89,39 +94,25 @@ export default function CreatePost() {
     const handleSubmit = async (e) => {
         e.preventDefault()
 
-        if (!content.trim()) {
-            toast.error("الرجاء كتابة الخاطرة أولاً")
-            return
-        }
+        if (!content.trim()) return toast.error("الرجاء كتابة الخاطرة أولاً")
+        if (content.trim().length < 10) return toast.error("الخاطرة يجب أن تكون على الأقل 10 أحرف")
 
-        if (content.trim().length < 10) {
-            toast.error("الخاطرة يجب أن تكون على الأقل 10 أحرف")
+        if (!user) {
+            toast.error("يجب تسجيل الدخول أولاً")
+            router.push("/auth/login")
             return
         }
 
         setIsLoading(true)
 
         try {
-            const { data: { user }, error: userError } = await supabase.auth.getUser()
-            if (userError || !user) {
-                toast.error("يجب تسجيل الدخول أولاً")
-                router.push('/auth/login')
-                return
-            }
-
             let imageUrl = ""
             if (imageFile) {
-                try {
-                    imageUrl = await uploadImageToStorage(imageFile, user.id)
-                } catch (uploadError) {
-                    toast.error("فشل في رفع الصورة")
-                    setIsLoading(false)
-                    return
-                }
+                imageUrl = await uploadImageToStorage(imageFile, user.id)
             }
 
-            const { error: insertError } = await supabase
-                .from('posts')
+            const { error } = await supabase
+                .from("posts")
                 .insert([
                     {
                         user_id: user.id,
@@ -133,39 +124,40 @@ export default function CreatePost() {
                     }
                 ])
 
-            if (insertError) {
-                console.error('Insert error:', insertError)
-                throw insertError
-            }
+            if (error) throw error
 
             toast.success("تم نشر الخاطرة بنجاح!")
-            router.push('/')
-
+            router.push("/")
         } catch (error) {
-            console.error('Create post error:', error)
+            console.error("Error creating post:", error)
             toast.error("حدث خطأ أثناء نشر الخاطرة")
         } finally {
             setIsLoading(false)
         }
     }
 
-    // تنظيف الـ URLs عند unmount
-    useState(() => {
+    // تنظيف الصورة المؤقتة
+    useEffect(() => {
         return () => {
-            if (imagePreview) {
-                URL.revokeObjectURL(imagePreview)
-            }
+            if (imagePreview) URL.revokeObjectURL(imagePreview)
         }
-    })
-    console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-    console.log('KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    }, [imagePreview])
+
+    // ✅ أثناء تحميل المستخدم (من AuthContext)
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <p className="text-gray-500 text-lg">جاري التحقق من تسجيل الدخول...</p>
+            </div>
+        )
+    }
+
+    if (!user) return null // ✅ لتجنب الوميض قبل التوجيه
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 py-8">
             <div className="max-w-2xl mx-auto px-4">
-                {/* بطاقة إنشاء الخاطرة */}
                 <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-amber-200">
-                    {/* الهيدر */}
                     <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-white/20 rounded-xl">
@@ -178,9 +170,7 @@ export default function CreatePost() {
                         </div>
                     </div>
 
-                    {/* نموذج الخاطرة */}
                     <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                        {/* حقل النص */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-3">
                                 اكتب خاطرك هنا...
@@ -189,7 +179,7 @@ export default function CreatePost() {
                                 <textarea
                                     value={content}
                                     onChange={handleContentChange}
-                                    placeholder="اكتب ما يدور في خاطرك... شاركنا أفكارك ومشاعرك"
+                                    placeholder="اكتب ما يدور في خاطرك..."
                                     className="w-full h-48 border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none text-lg leading-relaxed bg-gray-50 transition-all"
                                 />
                                 <div className="absolute bottom-3 left-3 text-sm text-gray-500">
@@ -198,11 +188,8 @@ export default function CreatePost() {
                             </div>
                         </div>
 
-                        {/* التصنيف */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                التصنيف (اختياري)
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">التصنيف (اختياري)</label>
                             <select
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value)}
@@ -216,12 +203,10 @@ export default function CreatePost() {
                             </select>
                         </div>
 
-                        {/* رفع الصورة */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-3">
                                 إضافة صورة (اختياري)
                             </label>
-
                             {imagePreview ? (
                                 <div className="relative">
                                     <img
@@ -254,16 +239,15 @@ export default function CreatePost() {
                             )}
                         </div>
 
-                        {/* أزرار الإجراء */}
                         <div className="flex gap-3 pt-4">
                             <button
                                 type="button"
                                 onClick={() => router.back()}
                                 className="flex-1 bg-gray-500 text-white py-3 px-6 rounded-xl hover:bg-gray-600 transition font-medium flex items-center justify-center gap-2"
                             >
-                                <FaTimes />
-                                إلغاء
+                                <FaTimes /> إلغاء
                             </button>
+
                             <button
                                 type="submit"
                                 disabled={isLoading || !content.trim()}
@@ -276,25 +260,10 @@ export default function CreatePost() {
                                     </>
                                 ) : (
                                     <>
-                                        <FaPaperPlane />
-                                        نشر الخاطرة
+                                        <FaPaperPlane /> نشر الخاطرة
                                     </>
                                 )}
                             </button>
-                        </div>
-
-                        {/* نصائح */}
-                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                            <h3 className="font-medium text-amber-800 mb-2 flex items-center gap-2">
-                                <FaSmile className="text-amber-600" />
-                                نصائح للكتابة
-                            </h3>
-                            <ul className="text-sm text-amber-700 space-y-1">
-                                <li>• اكتب من القلب وكن صادقاً في مشاعرك</li>
-                                <li>• استخدم لغة واضحة وسهلة الفهم</li>
-                                <li>• يمكنك استخدام الصور لتوضيح فكرتك</li>
-                                <li>• اختر التصنيف المناسب لخاطرك</li>
-                            </ul>
                         </div>
                     </form>
                 </div>

@@ -12,70 +12,64 @@ export default function VerifyEmailCallback() {
     useEffect(() => {
         const handleCallback = async () => {
             try {
-                // قراءة الـ hash fragment بدلاً من query string
-                const hash = window.location.hash.substring(1);
-                const params = new URLSearchParams(hash);
-
-                const accessToken = params.get('access_token');
-                const refreshToken = params.get('refresh_token');
-                const tokenType = params.get('token_type');
-                const expiresIn = params.get('expires_in');
-                const type = params.get('type');
+                // قراءة الـ code من query parameters
+                const params = new URLSearchParams(window.location.search);
+                const code = params.get('code');
+                const error = params.get('error');
+                const errorDescription = params.get('error_description');
 
                 console.log('Callback params:', {
-                    accessToken: !!accessToken,
-                    refreshToken: !!refreshToken,
-                    type
+                    code: !!code,
+                    error,
+                    errorDescription
                 });
 
-                if (type === 'signup' || type === 'email_verification') {
-                    setStatus('loading');
-                    setMessage('جاري تفعيل حسابك...');
-
-                    if (accessToken && refreshToken) {
-                        // تسجيل الدخول تلقائي
-                        const { data: { session }, error: sessionError } = await supabase.auth.setSession({
-                            access_token: accessToken,
-                            refresh_token: refreshToken
-                        });
-
-                        if (sessionError) {
-                            console.error('Session error:', sessionError);
-                            throw sessionError;
-                        }
-
-                        if (!session) {
-                            throw new Error('فشل في إنشاء الجلسة');
-                        }
-
-                        setStatus('success');
-                        setMessage('تم تفعيل حسابك بنجاح! جاري التوجيه...');
-
-                        // التحقق من حالة الملف الشخصي
-                        const { data: profile, error: profileError } = await supabase
-                            .from('profiles')
-                            .select('profile_completed')
-                            .eq('id', session.user.id)
-                            .single();
-
-                        if (profileError) {
-                            console.error('Profile error:', profileError);
-                            // نستمر حتى لو كان هناك خطأ في الملف الشخصي
-                        }
-
-                        setTimeout(() => {
-                            if (profile && profile.profile_completed) {
-                                router.push("/");
-                            } else {
-                                router.push("/complete-profile");
-                            }
-                        }, 2000);
-                    } else {
-                        throw new Error('لم يتم العثور على توكن التفعيل.');
-                    }
-                } else {
-                    throw new Error('رابط التفعيل غير صالح.');
+                if (error) {
+                    throw new Error(errorDescription || `خطأ في التفعيل: ${error}`);
                 }
+
+                if (!code) {
+                    throw new Error('لم يتم العثور على كود التفعيل في الرابط.');
+                }
+
+                setStatus('loading');
+                setMessage('جاري تفعيل حسابك...');
+
+                // استبدال الكود بـ session
+                const { data: { session }, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+                if (exchangeError) {
+                    console.error('Exchange error:', exchangeError);
+                    throw exchangeError;
+                }
+
+                if (!session) {
+                    throw new Error('فشل في إنشاء الجلسة بعد التبادل.');
+                }
+
+                setStatus('success');
+                setMessage('تم تفعيل حسابك بنجاح! جاري التوجيه...');
+
+                // التحقق من حالة الملف الشخصي
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('profile_completed')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (profileError && profileError.code !== 'PGRST116') {
+                    console.error('Profile error:', profileError);
+                    // نستمر حتى لو كان هناك خطأ في الملف الشخصي
+                }
+
+                setTimeout(() => {
+                    if (profile && profile.profile_completed) {
+                        router.push("/");
+                    } else {
+                        router.push("/complete-profile");
+                    }
+                }, 2000);
+
             } catch (error) {
                 console.error('Verification error:', error);
                 setStatus('error');
@@ -83,13 +77,7 @@ export default function VerifyEmailCallback() {
             }
         }
 
-        // تأكد من أن الصفحة قد تم تحميلها بالكامل
-        if (window.location.hash) {
-            handleCallback();
-        } else {
-            setStatus('error');
-            setMessage('رابط التفعيل غير صالح أو منقوص.');
-        }
+        handleCallback();
     }, [router]);
 
     const getStatusIcon = () => {
@@ -133,7 +121,7 @@ export default function VerifyEmailCallback() {
                         <p className="text-gray-600 mb-6 leading-relaxed">
                             {status === 'loading' && 'نحن نعالج رابط التفعيل، من فضلك انتظر...'}
                             {status === 'success' && 'تم تفعيل حسابك! سيتم توجيهك للصفحة المناسبة.'}
-                            {status === 'error' && 'يمكنك تسجيل الدخول يدوياً.'}
+                            {status === 'error' && 'يمكنك تسجيل الدخول يدوياً أو محاولة التسجيل مرة أخرى.'}
                         </p>
 
                         {status === 'loading' && (
@@ -151,12 +139,20 @@ export default function VerifyEmailCallback() {
                         )}
 
                         {status === 'error' && (
-                            <button
-                                onClick={() => router.push('/auth/login')}
-                                className="mt-4 bg-amber-500 text-white px-6 py-3 rounded-xl hover:bg-amber-600 transition font-medium"
-                            >
-                                تسجيل الدخول
-                            </button>
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    onClick={() => router.push('/auth/login')}
+                                    className="bg-amber-500 text-white px-6 py-3 rounded-xl hover:bg-amber-600 transition font-medium"
+                                >
+                                    تسجيل الدخول
+                                </button>
+                                <button
+                                    onClick={() => router.push('/auth/signup')}
+                                    className="bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 transition font-medium"
+                                >
+                                    إنشاء حساب جديد
+                                </button>
+                            </div>
                         )}
 
                         <div className="mt-6 p-4 bg-white/50 rounded-xl border border-white/80">

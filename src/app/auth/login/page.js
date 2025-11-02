@@ -6,12 +6,16 @@ import { MdWavingHand } from "react-icons/md"
 import { FaCheck } from "react-icons/fa"
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
-import { useAuth } from '../../context/AuthContext' // ✅ استخدم الكونتكست
+import { useAuth } from '../../context/AuthContext'
 
 export default function Login() {
     const router = useRouter()
-    const { signIn } = useAuth() // ✅ استخدم دالة تسجيل الدخول من الكونتكست
-    const [formData, setFormData] = useState({ email: '', password: '' })
+    const { signIn } = useAuth()
+
+    const [formData, setFormData] = useState({
+        email: '',
+        password: ''
+    })
     const [rememberMe, setRememberMe] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
@@ -26,51 +30,22 @@ export default function Login() {
         setIsLoading(true)
         setError('')
 
-        try {
-            // ✅ استدعاء AuthContext بدلاً من supabase مباشرة
-            const { user, error: signInError } = await signIn(formData.email, formData.password)
+        const { error } = await signIn(formData.email, formData.password)
 
-            if (signInError) throw signInError
-
-            if (user) {
-                toast.success('تم تسجيل الدخول بنجاح 🎉')
-
-                // تحقق من إكمال الملف الشخصي (اختياري)
-                if (user.profile_completed === false) {
-                    router.push('/complete-profile')
-                } else {
-                    router.push('/')
-                }
-            }
-        } catch (error) {
-            if (error.message?.includes('Invalid login credentials')) {
+        if (error) {
+            if (error.message.includes('Invalid login credentials')) {
                 setError('البريد الإلكتروني أو كلمة المرور غير صحيحة')
-            } else if (error.message?.includes('Email not confirmed')) {
+            } else if (error.message.includes('Email not confirmed')) {
                 setError('يرجى تأكيد بريدك الإلكتروني أولاً')
             } else {
                 setError('حدث خطأ أثناء تسجيل الدخول')
             }
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
-    const handleForgotPassword = async () => {
-        if (!formData.email) {
-            setError('يرجى إدخال البريد الإلكتروني أولاً')
-            return
+        } else {
+            toast.success('تم تسجيل الدخول بنجاح 🎉')
+            router.push('/')
         }
 
-        try {
-            const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-                redirectTo: `${window.location.origin}/auth/reset-password`,
-            })
-
-            if (error) throw error
-            toast.success('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني')
-        } catch (error) {
-            setError('حدث خطأ أثناء إرسال رابط إعادة التعيين')
-        }
+        setIsLoading(false)
     }
 
     return (
@@ -153,13 +128,12 @@ export default function Login() {
                                 </div>
                             </label>
 
-                            <button
-                                type="button"
-                                onClick={handleForgotPassword}
+                            <Link
+                                href="/auth/forgot-password"
                                 className="text-sm font-medium text-amber-600 hover:text-amber-700 transition"
                             >
                                 نسيت كلمة المرور؟
-                            </button>
+                            </Link>
                         </div>
 
                         <button

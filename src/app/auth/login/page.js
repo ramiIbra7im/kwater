@@ -2,27 +2,22 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { MdWavingHand } from "react-icons/md";
-import { FaCheck } from "react-icons/fa";
-import { supabase } from '../../../lib/supabaseClient'
+import { MdWavingHand } from "react-icons/md"
+import { FaCheck } from "react-icons/fa"
 import { useRouter } from 'next/navigation'
-import toast from 'react-hot-toast';
+import toast from 'react-hot-toast'
+import { useAuth } from '../../context/AuthContext' // ✅ استخدم الكونتكست
 
 export default function Login() {
     const router = useRouter()
-    const [formData, setFormData] = useState({
-        email: '',
-        password: ''
-    })
+    const { signIn } = useAuth() // ✅ استخدم دالة تسجيل الدخول من الكونتكست
+    const [formData, setFormData] = useState({ email: '', password: '' })
     const [rememberMe, setRememberMe] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        })
+        setFormData({ ...formData, [e.target.name]: e.target.value })
         setError('')
     }
 
@@ -32,33 +27,25 @@ export default function Login() {
         setError('')
 
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: formData.email,
-                password: formData.password,
-            })
+            // ✅ استدعاء AuthContext بدلاً من supabase مباشرة
+            const { user, error: signInError } = await signIn(formData.email, formData.password)
 
-            if (error) {
-                throw error
-            }
+            if (signInError) throw signInError
 
-            if (data.user) {
-                // التحقق إذا كان الملف الشخصي مكتمل
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('profile_completed')
-                    .eq('id', data.user.id)
-                    .single()
+            if (user) {
+                toast.success('تم تسجيل الدخول بنجاح 🎉')
 
-                if (profile && !profile.profile_completed) {
+                // تحقق من إكمال الملف الشخصي (اختياري)
+                if (user.profile_completed === false) {
                     router.push('/complete-profile')
                 } else {
                     router.push('/')
                 }
             }
         } catch (error) {
-            if (error.message.includes('Invalid login credentials')) {
+            if (error.message?.includes('Invalid login credentials')) {
                 setError('البريد الإلكتروني أو كلمة المرور غير صحيحة')
-            } else if (error.message.includes('Email not confirmed')) {
+            } else if (error.message?.includes('Email not confirmed')) {
                 setError('يرجى تأكيد بريدك الإلكتروني أولاً')
             } else {
                 setError('حدث خطأ أثناء تسجيل الدخول')
@@ -127,7 +114,6 @@ export default function Login() {
                                     id="email"
                                     name="email"
                                     type="email"
-                                    autoComplete="email"
                                     required
                                     value={formData.email}
                                     onChange={handleChange}
@@ -144,7 +130,6 @@ export default function Login() {
                                     id="password"
                                     name="password"
                                     type="password"
-                                    autoComplete="current-password"
                                     required
                                     value={formData.password}
                                     onChange={handleChange}

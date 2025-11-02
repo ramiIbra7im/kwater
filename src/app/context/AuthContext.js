@@ -8,8 +8,8 @@ export function AuthProvider({ children }) {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
 
+    // ✅ عند تحميل الصفحة أول مرة: نحصل على الجلسة الحالية
     useEffect(() => {
-        // ✅ عند تحميل الصفحة أول مرة: نحصل على الجلسة الحالية
         const getSession = async () => {
             const { data, error } = await supabase.auth.getSession()
             if (error) console.error('Error fetching session:', error)
@@ -29,7 +29,39 @@ export function AuthProvider({ children }) {
         }
     }, [])
 
-    // ✅ دالة تسجيل الخروج
+    // ✅ تسجيل الدخول
+    const signIn = async (email, password) => {
+        try {
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            })
+            if (error) throw error
+            setUser(data.user)
+            return { user: data.user }
+        } catch (error) {
+            console.error('Error signing in:', error.message)
+            return { error }
+        }
+    }
+
+    // ✅ إنشاء حساب جديد
+    const signUp = async (email, password) => {
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+            })
+            if (error) throw error
+            setUser(data.user)
+            return { user: data.user }
+        } catch (error) {
+            console.error('Error signing up:', error.message)
+            return { error }
+        }
+    }
+
+    // ✅ تسجيل الخروج
     const signOut = async () => {
         try {
             await supabase.auth.signOut()
@@ -40,7 +72,7 @@ export function AuthProvider({ children }) {
     }
 
     return (
-        <AuthContext.Provider value={{ user, loading, signOut }}>
+        <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
             {children}
         </AuthContext.Provider>
     )

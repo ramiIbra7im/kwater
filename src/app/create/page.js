@@ -1,12 +1,16 @@
+// src/app/create/page.js
 'use client'
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { FaEdit, FaImage, FaSmile, FaPaperPlane, FaTimes } from "react-icons/fa"
 import { supabase } from "../../lib/supabaseClient"
 import toast from "react-hot-toast"
+import AuthGuard from "../components/AuthGuard" // أضف هذا
+import { useAuth } from "../context/AuthContext" // أضف هذا
 
 export default function CreatePost() {
     const router = useRouter()
+    const { user } = useAuth() // استخدم useAuth بدل التحقق المباشر
     const [content, setContent] = useState("")
     const [category, setCategory] = useState("")
     const [imageFile, setImageFile] = useState(null)
@@ -102,13 +106,6 @@ export default function CreatePost() {
         setIsLoading(true)
 
         try {
-            const { data: { user }, error: userError } = await supabase.auth.getUser()
-            if (userError || !user) {
-                toast.error("يجب تسجيل الدخول أولاً")
-                router.push('/auth/login')
-                return
-            }
-
             let imageUrl = ""
             if (imageFile) {
                 try {
@@ -149,156 +146,148 @@ export default function CreatePost() {
         }
     }
 
-    // تنظيف الـ URLs عند unmount
-    useState(() => {
-        return () => {
-            if (imagePreview) {
-                URL.revokeObjectURL(imagePreview)
-            }
-        }
-    })
-    console.log('URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
-    console.log('KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-
+    // استخدام AuthGuard بدل التحقق الداخلي
     return (
-        <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 py-8">
-            <div className="max-w-2xl mx-auto px-4">
-                {/* بطاقة إنشاء الخاطرة */}
-                <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-amber-200">
-                    {/* الهيدر */}
-                    <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white/20 rounded-xl">
-                                <FaEdit className="text-2xl" />
+        <AuthGuard>
+            <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 py-8">
+                <div className="max-w-2xl mx-auto px-4">
+                    {/* بقية الكود كما هو */}
+                    <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-amber-200">
+                        {/* الهيدر */}
+                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-white/20 rounded-xl">
+                                    <FaEdit className="text-2xl" />
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-bold">اكتب خاطرة جديدة</h1>
+                                    <p className="text-amber-100">شارك أفكارك ومشاعرك مع العالم</p>
+                                </div>
                             </div>
+                        </div>
+
+                        {/* نموذج الخاطرة */}
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                            {/* حقل النص */}
                             <div>
-                                <h1 className="text-2xl font-bold">اكتب خاطرة جديدة</h1>
-                                <p className="text-amber-100">شارك أفكارك ومشاعرك مع العالم</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* نموذج الخاطرة */}
-                    <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                        {/* حقل النص */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                اكتب خاطرك هنا...
-                            </label>
-                            <div className="relative">
-                                <textarea
-                                    value={content}
-                                    onChange={handleContentChange}
-                                    placeholder="اكتب ما يدور في خاطرك... شاركنا أفكارك ومشاعرك"
-                                    className="w-full h-48 border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none text-lg leading-relaxed bg-gray-50 transition-all"
-                                />
-                                <div className="absolute bottom-3 left-3 text-sm text-gray-500">
-                                    {charCount}/{maxChars}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* التصنيف */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                التصنيف (اختياري)
-                            </label>
-                            <select
-                                value={category}
-                                onChange={(e) => setCategory(e.target.value)}
-                                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
-                            >
-                                {categories.map((cat) => (
-                                    <option key={cat.value} value={cat.value}>
-                                        {cat.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* رفع الصورة */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                إضافة صورة (اختياري)
-                            </label>
-
-                            {imagePreview ? (
-                                <div className="relative">
-                                    <img
-                                        src={imagePreview}
-                                        alt="Preview"
-                                        className="w-full h-64 object-cover rounded-2xl border border-gray-300"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={removeImage}
-                                        className="absolute top-3 left-3 w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition shadow-lg"
-                                    >
-                                        <FaTimes />
-                                    </button>
-                                </div>
-                            ) : (
-                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer hover:border-amber-500 transition bg-gray-50">
-                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <FaImage className="text-3xl text-gray-400 mb-2" />
-                                        <p className="text-sm text-gray-500">انقر لرفع صورة</p>
-                                        <p className="text-xs text-gray-400">PNG, JPG, GIF up to 5MB</p>
-                                    </div>
-                                    <input
-                                        type="file"
-                                        onChange={handleImageUpload}
-                                        accept="image/*"
-                                        className="hidden"
-                                    />
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    اكتب خاطرك هنا...
                                 </label>
-                            )}
-                        </div>
+                                <div className="relative">
+                                    <textarea
+                                        value={content}
+                                        onChange={handleContentChange}
+                                        placeholder="اكتب ما يدور في خاطرك... شاركنا أفكارك ومشاعرك"
+                                        className="w-full h-48 border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none text-lg leading-relaxed bg-gray-50 transition-all"
+                                    />
+                                    <div className="absolute bottom-3 left-3 text-sm text-gray-500">
+                                        {charCount}/{maxChars}
+                                    </div>
+                                </div>
+                            </div>
 
-                        {/* أزرار الإجراء */}
-                        <div className="flex gap-3 pt-4">
-                            <button
-                                type="button"
-                                onClick={() => router.back()}
-                                className="flex-1 bg-gray-500 text-white py-3 px-6 rounded-xl hover:bg-gray-600 transition font-medium flex items-center justify-center gap-2"
-                            >
-                                <FaTimes />
-                                إلغاء
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={isLoading || !content.trim()}
-                                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-6 rounded-xl hover:from-amber-600 hover:to-orange-600 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        جاري النشر...
-                                    </>
+                            {/* التصنيف */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    التصنيف (اختياري)
+                                </label>
+                                <select
+                                    value={category}
+                                    onChange={(e) => setCategory(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
+                                >
+                                    {categories.map((cat) => (
+                                        <option key={cat.value} value={cat.value}>
+                                            {cat.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* رفع الصورة */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                    إضافة صورة (اختياري)
+                                </label>
+
+                                {imagePreview ? (
+                                    <div className="relative">
+                                        <img
+                                            src={imagePreview}
+                                            alt="Preview"
+                                            className="w-full h-64 object-cover rounded-2xl border border-gray-300"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={removeImage}
+                                            className="absolute top-3 left-3 w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition shadow-lg"
+                                        >
+                                            <FaTimes />
+                                        </button>
+                                    </div>
                                 ) : (
-                                    <>
-                                        <FaPaperPlane />
-                                        نشر الخاطرة
-                                    </>
+                                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer hover:border-amber-500 transition bg-gray-50">
+                                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                            <FaImage className="text-3xl text-gray-400 mb-2" />
+                                            <p className="text-sm text-gray-500">انقر لرفع صورة</p>
+                                            <p className="text-xs text-gray-400">PNG, JPG, GIF up to 5MB</p>
+                                        </div>
+                                        <input
+                                            type="file"
+                                            onChange={handleImageUpload}
+                                            accept="image/*"
+                                            className="hidden"
+                                        />
+                                    </label>
                                 )}
-                            </button>
-                        </div>
+                            </div>
 
-                        {/* نصائح */}
-                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                            <h3 className="font-medium text-amber-800 mb-2 flex items-center gap-2">
-                                <FaSmile className="text-amber-600" />
-                                نصائح للكتابة
-                            </h3>
-                            <ul className="text-sm text-amber-700 space-y-1">
-                                <li>• اكتب من القلب وكن صادقاً في مشاعرك</li>
-                                <li>• استخدم لغة واضحة وسهلة الفهم</li>
-                                <li>• يمكنك استخدام الصور لتوضيح فكرتك</li>
-                                <li>• اختر التصنيف المناسب لخاطرك</li>
-                            </ul>
-                        </div>
-                    </form>
+                            {/* أزرار الإجراء */}
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => router.back()}
+                                    className="flex-1 bg-gray-500 text-white py-3 px-6 rounded-xl hover:bg-gray-600 transition font-medium flex items-center justify-center gap-2"
+                                >
+                                    <FaTimes />
+                                    إلغاء
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isLoading || !content.trim()}
+                                    className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-6 rounded-xl hover:from-amber-600 hover:to-orange-600 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            جاري النشر...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FaPaperPlane />
+                                            نشر الخاطرة
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* نصائح */}
+                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                                <h3 className="font-medium text-amber-800 mb-2 flex items-center gap-2">
+                                    <FaSmile className="text-amber-600" />
+                                    نصائح للكتابة
+                                </h3>
+                                <ul className="text-sm text-amber-700 space-y-1">
+                                    <li>• اكتب من القلب وكن صادقاً في مشاعرك</li>
+                                    <li>• استخدم لغة واضحة وسهلة الفهم</li>
+                                    <li>• يمكنك استخدام الصور لتوضيح فكرتك</li>
+                                    <li>• اختر التصنيف المناسب لخاطرك</li>
+                                </ul>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
+        </AuthGuard>
     )
 }

@@ -12,45 +12,84 @@ export default function VerifyEmailCallback() {
     useEffect(() => {
         const handleCallback = async () => {
             try {
-                const params = new URLSearchParams(window.location.search);
-                const code = params.get('code'); // ناخد الـ code بدل access_token
-                if (!code) throw new Error('رابط التفعيل غير صالح.');
+                // قراءة الـ hash fragment بدلاً من query string
+                const hash = window.location.hash.substring(1);
+                const params = new URLSearchParams(hash);
 
-                setStatus('loading');
-                setMessage('جاري تفعيل حسابك...');
+                const accessToken = params.get('access_token');
+                const refreshToken = params.get('refresh_token');
+                const tokenType = params.get('token_type');
+                const expiresIn = params.get('expires_in');
+                const type = params.get('type');
 
-                // استبدال الكود بـ session
-                const { data: { session }, error } = await supabase.auth.exchangeCodeForSession(code);
-                if (error) throw error;
-                if (!session?.user) throw new Error('حدث خطأ أثناء التفعيل.');
+                console.log('Callback params:', {
+                    accessToken: !!accessToken,
+                    refreshToken: !!refreshToken,
+                    type
+                });
 
-                setStatus('success');
-                setMessage('تم تفعيل حسابك بنجاح! جاري التوجيه...');
+                if (type === 'signup' || type === 'email_verification') {
+                    setStatus('loading');
+                    setMessage('جاري تفعيل حسابك...');
 
-                // التحقق من حالة الملف الشخصي
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('profile_completed')
-                    .eq('id', session.user.id)
-                    .single();
+                    if (accessToken && refreshToken) {
+                        // تسجيل الدخول تلقائي
+                        const { data: { session }, error: sessionError } = await supabase.auth.setSession({
+                            access_token: accessToken,
+                            refresh_token: refreshToken
+                        });
 
-                if (profileError) throw profileError;
+                        if (sessionError) {
+                            console.error('Session error:', sessionError);
+                            throw sessionError;
+                        }
 
-                setTimeout(() => {
-                    if (profile && profile.profile_completed) {
-                        router.push("/");
+                        if (!session) {
+                            throw new Error('فشل في إنشاء الجلسة');
+                        }
+
+                        setStatus('success');
+                        setMessage('تم تفعيل حسابك بنجاح! جاري التوجيه...');
+
+                        // التحقق من حالة الملف الشخصي
+                        const { data: profile, error: profileError } = await supabase
+                            .from('profiles')
+                            .select('profile_completed')
+                            .eq('id', session.user.id)
+                            .single();
+
+                        if (profileError) {
+                            console.error('Profile error:', profileError);
+                            // نستمر حتى لو كان هناك خطأ في الملف الشخصي
+                        }
+
+                        setTimeout(() => {
+                            if (profile && profile.profile_completed) {
+                                router.push("/");
+                            } else {
+                                router.push("/complete-profile");
+                            }
+                        }, 2000);
                     } else {
-                        router.push("/complete-profile");
+                        throw new Error('لم يتم العثور على توكن التفعيل.');
                     }
-                }, 2000);
-
+                } else {
+                    throw new Error('رابط التفعيل غير صالح.');
+                }
             } catch (error) {
+                console.error('Verification error:', error);
                 setStatus('error');
                 setMessage(error.message || 'حدث خطأ أثناء التفعيل.');
             }
         }
 
-        handleCallback();
+        // تأكد من أن الصفحة قد تم تحميلها بالكامل
+        if (window.location.hash) {
+            handleCallback();
+        } else {
+            setStatus('error');
+            setMessage('رابط التفعيل غير صالح أو منقوص.');
+        }
     }, [router]);
 
     const getStatusIcon = () => {

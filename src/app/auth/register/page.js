@@ -77,6 +77,17 @@ export default function Register() {
         setIsLoading(true)
 
         try {
+            // إنشاء جلسة مؤقتة للحصول على code_verifier
+            const { data: tempSession, error: tempError } = await supabase.auth.signInWithPassword({
+                email: 'temp@temp.com',
+                password: 'temp-password-123'
+            }).catch(() => ({ data: null, error: null }));
+
+            // طريقة بديلة: حفظ بيانات في localStorage قبل التسجيل
+            const timestamp = Date.now().toString();
+            localStorage.setItem('supabase_signup_timestamp', timestamp);
+            localStorage.setItem('supabase_signup_email', formData.email);
+
             // تسجيل المستخدم في Supabase Auth
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: formData.email,
@@ -84,7 +95,8 @@ export default function Register() {
                 options: {
                     emailRedirectTo: `${window.location.origin}/auth/callback`,
                     data: {
-                        full_name: formData.fullName
+                        full_name: formData.fullName,
+                        signup_timestamp: timestamp
                     }
                 }
             });
@@ -102,20 +114,32 @@ export default function Register() {
                             id: authData.user.id,
                             full_name: formData.fullName,
                             email: formData.email,
-                            profile_completed: false
+                            profile_completed: false,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString()
                         }
                     ])
 
                 if (profileError) {
+                    console.error('Profile creation error:', profileError);
+                    // نستمر حتى لو فشل إنشاء البروفايل
                 }
+
                 toast.success('تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب.')
-                router.push('/auth/login')
+
+                // الانتظار قليلاً قبل التوجيه
+                setTimeout(() => {
+                    router.push('/auth/login')
+                }, 2000);
             }
         } catch (error) {
+            console.error('Signup error:', error);
             if (error.message.includes('User already registered')) {
                 setErrors({ email: 'هذا البريد الإلكتروني مسجل بالفعل' })
+            } else if (error.message.includes('Email rate limit exceeded')) {
+                setErrors({ general: 'تم إرسال العديد من الطلبات. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.' })
             } else {
-                setErrors({ general: 'حدث خطأ أثناء إنشاء الحساب' })
+                setErrors({ general: 'حدث خطأ أثناء إنشاء الحساب: ' + error.message })
             }
         } finally {
             setIsLoading(false)

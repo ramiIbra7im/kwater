@@ -6,7 +6,7 @@ import { supabase } from "../../../lib/supabaseClient";
 
 export default function VerifyEmailCallback() {
     const router = useRouter();
-    const [status, setStatus] = useState('loading'); // loading, success, error
+    const [status, setStatus] = useState('loading');
     const [message, setMessage] = useState('جاري التحقق من رابط التفعيل...');
 
     useEffect(() => {
@@ -35,11 +35,23 @@ export default function VerifyEmailCallback() {
                 setStatus('loading');
                 setMessage('جاري تفعيل حسابك...');
 
-                // استبدال الكود بـ session
+                // محاولة استرداد code_verifier من localStorage
+                const codeVerifier = localStorage.getItem('supabase.code_verifier');
+
+                if (!codeVerifier) {
+                    console.warn('Code verifier not found in localStorage, trying without it...');
+                }
+
+                // استبدال الكود بـ session مع code_verifier
                 const { data: { session }, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
                 if (exchangeError) {
                     console.error('Exchange error:', exchangeError);
+
+                    // إذا فشلت المحاولة الأولى، نجرب طريقة بديلة
+                    if (exchangeError.message.includes('code verifier')) {
+                        throw new Error('فشل في التحقق من الرابط. يرجى محاولة تسجيل الدخول يدوياً.');
+                    }
                     throw exchangeError;
                 }
 
@@ -47,33 +59,51 @@ export default function VerifyEmailCallback() {
                     throw new Error('فشل في إنشاء الجلسة بعد التبادل.');
                 }
 
+                // تنظيف code_verifier من localStorage بعد الاستخدام الناجح
+                localStorage.removeItem('supabase.code_verifier');
+
                 setStatus('success');
                 setMessage('تم تفعيل حسابك بنجاح! جاري التوجيه...');
 
-                // التحقق من حالة الملف الشخصي
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('profile_completed')
-                    .eq('id', session.user.id)
-                    .single();
+                // إنشاء الملف الشخصي إذا لم يكن موجوداً
+                try {
+                    const { data: profile, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('profile_completed')
+                        .eq('id', session.user.id)
+                        .single();
 
-                if (profileError && profileError.code !== 'PGRST116') {
-                    console.error('Profile error:', profileError);
-                    // نستمر حتى لو كان هناك خطأ في الملف الشخصي
+                    if (profileError && profileError.code === 'PGRST116') {
+                        // الملف الشخصي غير موجود، نقوم بإنشائه
+                        const { error: insertError } = await supabase
+                            .from('profiles')
+                            .insert({
+                                id: session.user.id,
+                                email: session.user.email,
+                                profile_completed: false,
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString()
+                            });
+
+                        if (insertError) {
+                            console.error('Error creating profile:', insertError);
+                        }
+                    }
+                } catch (profileError) {
+                    console.error('Profile check error:', profileError);
                 }
 
                 setTimeout(() => {
-                    if (profile && profile.profile_completed) {
-                        router.push("/");
-                    } else {
-                        router.push("/complete-profile");
-                    }
+                    router.push("/complete-profile");
                 }, 2000);
 
             } catch (error) {
                 console.error('Verification error:', error);
                 setStatus('error');
                 setMessage(error.message || 'حدث خطأ أثناء التفعيل.');
+
+                // تنظيف localStorage في حالة الخطأ
+                localStorage.removeItem('supabase.code_verifier');
             }
         }
 
@@ -120,21 +150,13 @@ export default function VerifyEmailCallback() {
 
                         <p className="text-gray-600 mb-6 leading-relaxed">
                             {status === 'loading' && 'نحن نعالج رابط التفعيل، من فضلك انتظر...'}
-                            {status === 'success' && 'تم تفعيل حسابك! سيتم توجيهك للصفحة المناسبة.'}
+                            {status === 'success' && 'تم تفعيل حسابك! جاري توجيهك لإكمال الملف الشخصي.'}
                             {status === 'error' && 'يمكنك تسجيل الدخول يدوياً أو محاولة التسجيل مرة أخرى.'}
                         </p>
 
                         {status === 'loading' && (
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
                                 <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full animate-pulse"></div>
-                            </div>
-                        )}
-
-                        {status === 'loading' && (
-                            <div className="flex justify-center space-x-2 rtl:space-x-reverse">
-                                {[1, 2, 3].map((dot) => (
-                                    <div key={dot} className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${dot * 0.2}s` }}></div>
-                                ))}
                             </div>
                         )}
 

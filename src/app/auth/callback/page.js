@@ -1,11 +1,12 @@
 // src/app/auth/callback/page.js
 'use client'
 import { useSearchParams, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { FaSpinner, FaCheckCircle, FaExclamationTriangle, FaRedo } from "react-icons/fa"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-export default function VerifyEmailCallback() {
+// مكون التحقق الرئيسي
+function VerificationContent() {
     const router = useRouter()
     const params = useSearchParams()
     const [status, setStatus] = useState('loading')
@@ -45,7 +46,6 @@ export default function VerifyEmailCallback() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                // إضافة credentials إذا كانت ضرورية
                 credentials: 'same-origin'
             })
 
@@ -196,18 +196,54 @@ export default function VerifyEmailCallback() {
                                 بياناتك محمية ومشفرة بأعلى معايير الأمان
                             </p>
                         </div>
-
-                        {/* معلومات التصحيح */}
-                        {process.env.NODE_ENV === 'development' && (
-                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <p className="text-xs text-yellow-800">
-                                    <strong>التصحيح:</strong> Retry: {retryCount}
-                                </p>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
         </div>
+    )
+}
+
+// مكون التحميل أثناء الانتظار
+function LoadingFallback() {
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
+            <div className="w-full max-w-md mx-auto">
+                <div className="relative overflow-hidden rounded-3xl shadow-2xl border-2 border-blue-200 bg-blue-50">
+                    <div className="absolute inset-0 opacity-5">
+                        <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
+                        <div className="absolute bottom-0 right-0 w-40 h-40 bg-purple-500 rounded-full translate-x-1/2 translate-y-1/2"></div>
+                    </div>
+
+                    <div className="relative z-10 p-8 text-center">
+                        <div className="flex justify-center mb-6">
+                            <div className="p-4 rounded-2xl bg-blue-100">
+                                <FaSpinner className="animate-spin text-3xl text-blue-500" />
+                            </div>
+                        </div>
+
+                        <h2 className="text-2xl font-bold mb-3 text-gray-800">
+                            جاري التحميل...
+                        </h2>
+
+                        <p className="text-gray-600 mb-6 leading-relaxed">
+                            نجهز صفحة التحقق، من فضلك انتظر...
+                        </p>
+
+                        <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+                            <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+// المكون الرئيسي مع Suspense
+export default function VerifyEmailCallback() {
+    return (
+        <Suspense fallback={<LoadingFallback />}>
+            <VerificationContent />
+        </Suspense>
     )
 }

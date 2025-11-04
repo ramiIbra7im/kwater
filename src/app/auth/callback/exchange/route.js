@@ -1,3 +1,4 @@
+// src/app/auth/callback/exchange/route.js
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
@@ -10,13 +11,17 @@ export async function GET(request) {
 
     // لو فيه خطأ من Supabase Auth
     if (error) {
-        return NextResponse.json({ error: error_description || error }, { status: 400 })
+        return NextResponse.json({
+            error: true,
+            message: error_description || error
+        }, { status: 400 })
     }
 
     try {
         if (code) {
             const supabase = createRouteHandlerClient({ cookies })
             const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+
             if (exchangeError) throw exchangeError
 
             const user = data?.user
@@ -25,20 +30,38 @@ export async function GET(request) {
             // إنشاء صف في جدول profiles لو مش موجود
             const { error: insertError } = await supabase
                 .from('profiles')
-                .upsert([{
+                .upsert([
+                    {
+                        id: user.id,
+                        email: user.email,
+                        full_name: user.user_metadata?.full_name || '',
+                        avatar_url: user.user_metadata?.avatar_url || '',
+                        updated_at: new Date().toISOString()
+                    }
+                ], { onConflict: 'id' })
+
+            if (insertError) {
+                console.error('Profile insert error:', insertError)
+                // لا نرمي خطأ هنا لأن المستخدم تم تفعيله بنجاح
+            }
+
+            // ✅ إرجاع نجاح مع بيانات المستخدم
+            return NextResponse.json({
+                success: true,
+                message: 'تم تفعيل الحساب بنجاح',
+                user: {
                     id: user.id,
-                    email: user.email,
-                    full_name: user.user_metadata?.full_name || '',
-                    avatar_url: user.user_metadata?.avatar_url || '',
-                    updated_at: new Date()
-                }], { onConflict: 'id' })
-
-            if (insertError) console.error('Profile insert error:', insertError)
+                    email: user.email
+                }
+            })
+        } else {
+            throw new Error('كود التفعيل مطلوب')
         }
-
-        return NextResponse.json({ success: true })
     } catch (err) {
-        console.error('Error during callback:', err)
-        return NextResponse.json({ error: err.message }, { status: 400 })
+        console.error('Exchange error:', err)
+        return NextResponse.json({
+            error: true,
+            message: err.message || 'حدث خطأ أثناء التفعيل'
+        }, { status: 500 })
     }
 }

@@ -1,3 +1,4 @@
+// middleware.js
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 
@@ -8,13 +9,13 @@ export async function middleware(req) {
     const { data: { session } } = await supabase.auth.getSession()
 
     // الصفحات المحمية
-    const protectedPaths = ['/profile', '/Create', '/Complete-account']
+    const protectedPaths = ['/profile', '/Create']
     const isProtectedPath = protectedPaths.some(path =>
         req.nextUrl.pathname.startsWith(path)
     )
 
-    // الصفحات التي يجب تجاهل التحقق فيها (callback و public)
-    const ignorePaths = ['/auth/callback', '/']
+    // الصفحات التي يجب تجاهل التحقق فيها
+    const ignorePaths = ['/auth/callback', '/', '/Complete-account'] // أضفنا Complete-account هنا
     const isIgnoredPath = ignorePaths.some(path =>
         req.nextUrl.pathname.startsWith(path)
     )
@@ -32,11 +33,6 @@ export async function middleware(req) {
         return NextResponse.redirect(new URL('/', req.url))
     }
 
-    // السماح بالمرور لأي صفحات في ignorePaths
-    if (isIgnoredPath) {
-        return res
-    }
-
     return res
 }
 
@@ -44,9 +40,8 @@ export const config = {
     matcher: [
         '/profile/:path*',
         '/Create/:path*',
-        '/Complete-account',
         '/auth/login',
         '/auth/register',
-        '/auth/callback', // أضفناه هنا
+        '/auth/callback',
     ],
 }

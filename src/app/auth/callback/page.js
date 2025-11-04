@@ -1,19 +1,35 @@
+// src/app/auth/callback/page.js
 'use client'
 import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { FaSpinner, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa"
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function VerifyEmailCallback() {
     const router = useRouter()
     const params = useSearchParams()
     const [status, setStatus] = useState('loading')
     const [message, setMessage] = useState('جاري التحقق من رابط التفعيل...')
+    const supabase = createClientComponentClient()
 
     useEffect(() => {
         const code = params.get('code')
+        const error = params.get('error')
+        const errorDescription = params.get('error_description')
+
+        // إذا كان هناك خطأ في URL نفسه
+        if (error) {
+            setStatus('error')
+            setMessage(errorDescription || error)
+            return
+        }
 
         const verify = async () => {
-            if (!code) return
+            if (!code) {
+                setStatus('error')
+                setMessage('رابط التفعيل غير صالح')
+                return
+            }
 
             try {
                 // نطلب من السيرفر يعمل exchange
@@ -21,21 +37,32 @@ export default function VerifyEmailCallback() {
                 const data = await response.json()
 
                 if (!response.ok || data.error) {
-                    throw new Error(data.error || 'حدث خطأ أثناء التفعيل.')
+                    throw new Error(data.message || 'حدث خطأ أثناء التفعيل.')
+                }
+
+                // 🔄 تحديث الـ session بعد التفعيل الناجح
+                const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession()
+
+                if (sessionError) {
+                    console.error('Session error:', sessionError)
                 }
 
                 setStatus('success')
                 setMessage('تم تفعيل حسابك بنجاح! جاري توجيهك...')
-                setTimeout(() => router.push('/Complete-account'), 2000)
+
+                // تأخير التوجيه ليعطي فرصة لرؤية رسالة النجاح
+                setTimeout(() => {
+                    router.push('/Complete-account')
+                }, 2000)
             } catch (err) {
-                console.error(err)
+                console.error('Verification error:', err)
                 setStatus('error')
                 setMessage(err.message || 'حدث خطأ أثناء التفعيل. حاول مجددًا.')
             }
         }
 
         verify()
-    }, [params, router])
+    }, [params, router, supabase])
 
     const getStatusIcon = () => {
         switch (status) {
@@ -66,17 +93,17 @@ export default function VerifyEmailCallback() {
 
                     <div className="relative z-10 p-8 text-center">
                         <div className="flex justify-center mb-6">
-                            <div className={`p-4 rounded-2xl transition-all duration-500 ${status === 'loading' ? 'bg-blue-100'
-                                    : status === 'success' ? 'bg-green-100'
-                                        : 'bg-red-100'
+                            <div className={`p-4 rounded-2xl transition-all duration-500 ${status === 'loading' ? 'bg-blue-100' :
+                                status === 'success' ? 'bg-green-100' :
+                                    'bg-red-100'
                                 }`}>
                                 {getStatusIcon()}
                             </div>
                         </div>
 
-                        <h2 className={`text-2xl font-bold mb-3 transition-all duration-500 ${status === 'loading' ? 'text-gray-800'
-                                : status === 'success' ? 'text-green-800'
-                                    : 'text-red-800'
+                        <h2 className={`text-2xl font-bold mb-3 transition-all duration-500 ${status === 'loading' ? 'text-gray-800' :
+                            status === 'success' ? 'text-green-800' :
+                                'text-red-800'
                             }`}>
                             {message}
                         </h2>

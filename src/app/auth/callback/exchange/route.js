@@ -6,62 +6,108 @@ import { cookies } from 'next/headers'
 export async function GET(request) {
     const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
-    const error = requestUrl.searchParams.get('error')
-    const error_description = requestUrl.searchParams.get('error_description')
 
-    // لو فيه خطأ من Supabase Auth
-    if (error) {
-        return NextResponse.json({
-            error: true,
-            message: error_description || error
-        }, { status: 400 })
+    // للتحقق من أن الطلب جاي من نفس الأصل
+    const origin = request.headers.get('origin')
+
+    if (!code) {
+        return NextResponse.json(
+            { error: true, message: 'كود التفعيل مطلوب' },
+            {
+                status: 400,
+                headers: {
+                    'Access-Control-Allow-Origin': origin || '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                }
+            }
+        )
     }
 
     try {
-        if (code) {
-            const supabase = createRouteHandlerClient({ cookies })
-            const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+        const supabase = createRouteHandlerClient({ cookies })
 
-            if (exchangeError) throw exchangeError
+        // استبدال الكود بالسيشن
+        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
-            const user = data?.user
-            if (!user) throw new Error('لم يتم العثور على المستخدم.')
+        if (exchangeError) {
+            console.error('Exchange error:', exchangeError)
+            throw new Error(exchangeError.message)
+        }
 
-            // إنشاء صف في جدول profiles لو مش موجود
-            const { error: insertError } = await supabase
-                .from('profiles')
-                .upsert([
-                    {
-                        id: user.id,
-                        email: user.email,
-                        full_name: user.user_metadata?.full_name || '',
-                        avatar_url: user.user_metadata?.avatar_url || '',
-                        updated_at: new Date().toISOString()
-                    }
-                ], { onConflict: 'id' })
+        const user = data?.user
+        if (!user) {
+            throw new Error('لم يتم العثور على المستخدم بعد التفعيل')
+        }
 
-            if (insertError) {
-                console.error('Profile insert error:', insertError)
-                // لا نرمي خطأ هنا لأن المستخدم تم تفعيله بنجاح
-            }
+        console.log('User verified:', user.email)
 
-            // ✅ إرجاع نجاح مع بيانات المستخدم
-            return NextResponse.json({
+        // إنشاء/تحديث البروفايل
+        const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+                id: user.id,
+                email: user.email,
+                full_name: user.user_metadata?.full_name || '',
+                avatar_url: user.user_metadata?.avatar_url || '',
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'id',
+                ignoreDuplicates: false
+            })
+
+        if (profileError) {
+            console.error('Profile error:', profileError)
+            // لا نوقف العملية لو فشل تحديث البروفايل
+        }
+
+        return NextResponse.json(
+            {
                 success: true,
                 message: 'تم تفعيل الحساب بنجاح',
                 user: {
                     id: user.id,
                     email: user.email
                 }
-            })
-        } else {
-            throw new Error('كود التفعيل مطلوب')
-        }
-    } catch (err) {
-        console.error('Exchange error:', err)
-        return NextResponse.json({
-            error: true,
-            message: err.message || 'حدث خطأ أثناء التفعيل'
-        }, { status: 500 })
+            },
+            {
+                headers: {
+                    'Access-Control-Allow-Origin': origin || '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                }
+            }
+        )
+
+    } catch (error) {
+        console.error('Full verification error:', error)
+        return NextResponse.json(
+            {
+                error: true,
+                message: error.message || 'حدث خطأ غير متوقع أثناء التفعيل'
+            },
+            {
+                status: 500,
+                headers: {
+                    'Access-Control-Allow-Origin': origin || '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                }
+            }
+        )
     }
+}
+
+// معالجة طلبات OPTIONS لـ CORS
+export async function OPTIONS(request) {
+    const origin = request.headers.get('origin')
+
+    return new NextResponse(null, {
+        status: 200,
+        headers: {
+            'Access-Control-Allow-Origin': origin || '*',
+            'Access-Control-Allow-Methods': 'GET, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
+    })
 }

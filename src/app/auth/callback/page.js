@@ -1,25 +1,25 @@
 // src/app/auth/callback/page.js
 'use client'
-import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect, useState, Suspense } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { FaSpinner, FaCheckCircle, FaExclamationTriangle, FaRedo } from "react-icons/fa"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-// مكون التحقق الرئيسي
-function VerificationContent() {
+// المكون الرئيسي
+function CallbackContent() {
     const router = useRouter()
     const params = useSearchParams()
     const [status, setStatus] = useState('loading')
-    const [message, setMessage] = useState('جاري التحقق من رابط التفعيل...')
+    const [message, setMessage] = useState('جاري تفعيل حسابك...')
     const [retryCount, setRetryCount] = useState(0)
     const supabase = createClientComponentClient()
 
-    const verifyEmail = async () => {
+    const handleAuthCallback = async () => {
         const code = params.get('code')
         const error = params.get('error')
         const errorDescription = params.get('error_description')
 
-        // إذا كان هناك خطأ في URL نفسه
+        // إذا كان هناك خطأ في الرابط
         if (error) {
             setStatus('error')
             setMessage(errorDescription || `خطأ في الرابط: ${error}`)
@@ -28,85 +28,75 @@ function VerificationContent() {
 
         if (!code) {
             setStatus('error')
-            setMessage('رابط التفعيل غير صالح - لا يوجد كود تفعيل')
+            setMessage('رابط التفعيل غير صالح')
             return
         }
 
         try {
-            console.log('Starting verification with code:', code)
-
-            // استخدام مسار نسبي بدلاً من المطلق
-            const baseUrl = window.location.origin
-            const verifyUrl = `${baseUrl}/auth/callback/exchange?code=${encodeURIComponent(code)}`
-
-            console.log('Calling API:', verifyUrl)
-
-            const response = await fetch(verifyUrl, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'same-origin'
-            })
-
-            console.log('Response status:', response.status)
-
+            // 1. استبدال الكود بالسيشن
+            const response = await fetch(`/auth/callback/exchange?code=${encodeURIComponent(code)}`)
             const data = await response.json()
-            console.log('Response data:', data)
 
             if (!response.ok || data.error) {
-                throw new Error(data.message || `خطأ في السيرفر: ${response.status}`)
+                throw new Error(data.message || 'فشل في تفعيل الحساب')
             }
 
-            // 🔄 محاولة الحصول على السيشن الجديد
-            const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession()
+            // 2. الحصول على بيانات المستخدم
+            const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-            if (sessionError) {
-                console.error('Session error:', sessionError)
-                // لا نوقف العملية لو فشل جلب السيشن
+            if (userError || !user) {
+                throw new Error('لم نتمكن من العثور على حسابك')
             }
-
-            console.log('Verification successful, session:', newSession)
 
             setStatus('success')
-            setMessage('تم تفعيل حسابك بنجاح! جاري توجيهك...')
+            setMessage('تم تفعيل حسابك بنجاح! جاري التحقق من بياناتك...')
 
-            // تأخير التوجيه ليعطي فرصة لرؤية رسالة النجاح
+            // 3. التحقق من اكتمال البيانات في profiles
+            const { data: profileData, error: profileError } = await supabase
+                .from('profiles')
+                .select('full_name, phone, bio')
+                .eq('id', user.id)
+                .single()
+
+            // تأخير بسيط لرؤية رسالة النجاح
             setTimeout(() => {
-                router.push('/Complete-account')
+                if (profileError || !profileData || !profileData.full_name) {
+                    // البيانات ناقصة → إكمال الملف الشخصي
+                    router.push('/Complete-account')
+                } else {
+                    // البيانات مكتملة → الصفحة الرئيسية
+                    router.push('/')
+                }
             }, 2000)
 
         } catch (err) {
-            console.error('Verification error:', err)
+            console.error('Auth callback error:', err)
 
-            // إذا كان الخطأ متعلق بالشبكة، نعطي فرصة لإعادة المحاولة
-            if (err.message.includes('network') || err.message.includes('fetch') || retryCount < 3) {
+            // إعادة المحاولة تلقائياً
+            if (retryCount < 2) {
                 setStatus('loading')
-                setMessage(`محاولة إعادة الاتصال... (${retryCount + 1}/3)`)
+                setMessage(`محاولة إعادة الاتصال... (${retryCount + 1}/2)`)
                 setRetryCount(prev => prev + 1)
-
-                // إعادة المحاولة بعد 2 ثانية
-                setTimeout(() => {
-                    verifyEmail()
-                }, 2000)
+                setTimeout(() => handleAuthCallback(), 2000)
             } else {
                 setStatus('error')
-                setMessage(err.message || 'حدث خطأ أثناء التفعيل. حاول مجددًا.')
+                setMessage(err.message || 'حدث خطأ أثناء التفعيل')
             }
         }
     }
 
     useEffect(() => {
-        verifyEmail()
-    }, []) // إزالة dependencies لتجنب إعادة التشغيل
+        handleAuthCallback()
+    }, [])
 
     const handleRetry = () => {
         setStatus('loading')
         setMessage('جاري إعادة المحاولة...')
         setRetryCount(0)
-        verifyEmail()
+        handleAuthCallback()
     }
 
+    // ... باقي كود الواجهة (نفس الكود السابق)
     const getStatusIcon = () => {
         switch (status) {
             case 'loading': return <FaSpinner className="animate-spin text-3xl text-blue-500" />
@@ -136,66 +126,38 @@ function VerificationContent() {
 
                     <div className="relative z-10 p-8 text-center">
                         <div className="flex justify-center mb-6">
-                            <div className={`p-4 rounded-2xl transition-all duration-500 ${status === 'loading' ? 'bg-blue-100' :
-                                status === 'success' ? 'bg-green-100' :
-                                    'bg-red-100'
-                                }`}>
+                            <div className={`p-4 rounded-2xl ${status === 'loading' ? 'bg-blue-100' : status === 'success' ? 'bg-green-100' : 'bg-red-100'}`}>
                                 {getStatusIcon()}
                             </div>
                         </div>
 
-                        <h2 className={`text-2xl font-bold mb-3 transition-all duration-500 ${status === 'loading' ? 'text-gray-800' :
-                            status === 'success' ? 'text-green-800' :
-                                'text-red-800'
-                            }`}>
+                        <h2 className={`text-2xl font-bold mb-3 ${status === 'loading' ? 'text-gray-800' : status === 'success' ? 'text-green-800' : 'text-red-800'}`}>
                             {message}
                         </h2>
 
-                        <p className="text-gray-600 mb-6 leading-relaxed">
-                            {status === 'loading' && (retryCount > 0 ?
-                                'نحاول إعادة الاتصال بالسيرفر...' :
-                                'نحن نعالج رابط التفعيل، من فضلك انتظر...'
-                            )}
-                            {status === 'success' && 'تم تفعيل حسابك! جاري توجيهك لإكمال الملف الشخصي.'}
-                            {status === 'error' && 'يمكنك تسجيل الدخول يدوياً أو محاولة التسجيل مرة أخرى.'}
+                        <p className="text-gray-600 mb-6">
+                            {status === 'loading' && (retryCount > 0 ? 'نحاول إعادة الاتصال...' : 'جاري معالجة طلبك...')}
+                            {status === 'success' && 'جاري توجيهك إلى المكان المناسب...'}
+                            {status === 'error' && 'يمكنك إعادة المحاولة أو تسجيل الدخول يدوياً.'}
                         </p>
 
                         {status === 'loading' && (
-                            <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+                            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
                                 <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full animate-pulse"></div>
                             </div>
                         )}
 
                         {status === 'error' && (
                             <div className="flex flex-col gap-3">
-                                <button
-                                    onClick={handleRetry}
-                                    className="flex items-center justify-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 transition font-medium"
-                                >
+                                <button onClick={handleRetry} className="flex items-center justify-center gap-2 bg-blue-500 text-white px-6 py-3 rounded-xl hover:bg-blue-600 transition">
                                     <FaRedo className="text-sm" />
                                     إعادة المحاولة
                                 </button>
-                                <button
-                                    onClick={() => router.push('/auth/login')}
-                                    className="bg-amber-500 text-white px-6 py-3 rounded-xl hover:bg-amber-600 transition font-medium"
-                                >
+                                <button onClick={() => router.push('/auth/login')} className="bg-amber-500 text-white px-6 py-3 rounded-xl hover:bg-amber-600 transition">
                                     تسجيل الدخول
-                                </button>
-                                <button
-                                    onClick={() => router.push('/auth/signup')}
-                                    className="bg-gray-500 text-white px-6 py-3 rounded-xl hover:bg-gray-600 transition font-medium"
-                                >
-                                    إنشاء حساب جديد
                                 </button>
                             </div>
                         )}
-
-                        <div className="mt-6 p-4 bg-white/50 rounded-xl border border-white/80">
-                            <p className="text-sm text-gray-500 flex items-center justify-center gap-2">
-                                <span className="text-xs">🔒</span>
-                                بياناتك محمية ومشفرة بأعلى معايير الأمان
-                            </p>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -203,47 +165,23 @@ function VerificationContent() {
     )
 }
 
-// مكون التحميل أثناء الانتظار
+// مكون التحميل
 function LoadingFallback() {
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
-            <div className="w-full max-w-md mx-auto">
-                <div className="relative overflow-hidden rounded-3xl shadow-2xl border-2 border-blue-200 bg-blue-50">
-                    <div className="absolute inset-0 opacity-5">
-                        <div className="absolute top-0 left-0 w-32 h-32 bg-blue-500 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-                        <div className="absolute bottom-0 right-0 w-40 h-40 bg-purple-500 rounded-full translate-x-1/2 translate-y-1/2"></div>
-                    </div>
-
-                    <div className="relative z-10 p-8 text-center">
-                        <div className="flex justify-center mb-6">
-                            <div className="p-4 rounded-2xl bg-blue-100">
-                                <FaSpinner className="animate-spin text-3xl text-blue-500" />
-                            </div>
-                        </div>
-
-                        <h2 className="text-2xl font-bold mb-3 text-gray-800">
-                            جاري التحميل...
-                        </h2>
-
-                        <p className="text-gray-600 mb-6 leading-relaxed">
-                            نجهز صفحة التحقق، من فضلك انتظر...
-                        </p>
-
-                        <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
-                            <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full animate-pulse"></div>
-                        </div>
-                    </div>
-                </div>
+        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+            <div className="text-center">
+                <FaSpinner className="animate-spin text-4xl text-blue-500 mx-auto mb-4" />
+                <p className="text-gray-600">جاري التحميل...</p>
             </div>
         </div>
     )
 }
 
-// المكون الرئيسي مع Suspense
-export default function VerifyEmailCallback() {
+// التصدير مع Suspense
+export default function CallbackPage() {
     return (
         <Suspense fallback={<LoadingFallback />}>
-            <VerificationContent />
+            <CallbackContent />
         </Suspense>
     )
 }

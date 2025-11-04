@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { FaUser, FaPhone, FaCamera, FaCheck, FaTimes } from "react-icons/fa";
+import { FaUser, FaPhone, FaCamera, FaCheck, FaTimes, FaPen } from "react-icons/fa";
 import { supabase } from "../../lib/supabaseClient";
 import toast from "react-hot-toast";
 
@@ -10,6 +10,7 @@ export default function CompleteProfile() {
     const fileInputRef = useRef(null);
     const [fullName, setFullName] = useState("");
     const [phoneNumber, setPhoneNumber] = useState("");
+    const [bio, setBio] = useState("");
     const [avatarFile, setAvatarFile] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -30,6 +31,12 @@ export default function CompleteProfile() {
             newErrors.phoneNumber = "رقم الموبايل غير صحيح";
         }
 
+        if (!bio.trim()) {
+            newErrors.bio = "النبذة الشخصية مطلوبة";
+        } else if (bio.trim().length < 10) {
+            newErrors.bio = "النبذة يجب أن تحتوي على 10 أحرف على الأقل";
+        }
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -37,8 +44,8 @@ export default function CompleteProfile() {
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (!file.type.startsWith('image/')) {
-                toast.warnn("الرجاء اختيار صورة فقط");
+            if (!file.type.startsWith("image/")) {
+                toast.error("الرجاء اختيار صورة فقط");
                 return;
             }
 
@@ -62,31 +69,22 @@ export default function CompleteProfile() {
     };
 
     const uploadImageToStorage = async (file, userId) => {
-        const fileExt = file.name.split('.').pop();
+        const fileExt = file.name.split(".").pop();
         const fileName = `${userId}/${Date.now()}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
-            .from('avatars')
+            .from("avatars")
             .upload(fileName, file);
 
-        if (uploadError) {
-            throw uploadError;
-        }
+        if (uploadError) throw uploadError;
 
-        const { data } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(fileName);
-
+        const { data } = supabase.storage.from("avatars").getPublicUrl(fileName);
         return data.publicUrl;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (!validateForm()) {
-            return;
-        }
-
+        if (!validateForm()) return;
         setIsLoading(true);
 
         try {
@@ -97,7 +95,6 @@ export default function CompleteProfile() {
             }
 
             let avatarUrl = "";
-
             if (avatarFile) {
                 avatarUrl = await uploadImageToStorage(avatarFile, user.id);
             }
@@ -107,16 +104,17 @@ export default function CompleteProfile() {
                 .update({
                     full_name: fullName.trim(),
                     phone_number: phoneNumber.trim(),
+                    bio: bio.trim(),
                     avatar_url: avatarUrl,
                     profile_completed: true,
-                    updated_at: new Date().toISOString()
+                    updated_at: new Date().toISOString(),
                 })
                 .eq("id", user.id);
 
             if (error) {
                 toast.error("حدث خطأ أثناء تحديث الملف الشخصي");
             } else {
-                toast.error("تم حفظ البيانات بنجاح!");
+                toast.success("تم حفظ البيانات بنجاح!");
                 router.push("/");
             }
         } catch (error) {
@@ -138,6 +136,7 @@ export default function CompleteProfile() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* الصورة الشخصية */}
                     <div className="text-center">
                         <div className="relative inline-block">
                             <div className="w-24 h-24 rounded-full border-4 border-indigo-100 overflow-hidden bg-gray-100">
@@ -186,6 +185,7 @@ export default function CompleteProfile() {
                         </p>
                     </div>
 
+                    {/* الاسم الكامل */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                             <FaUser className="text-gray-400" />
@@ -209,6 +209,7 @@ export default function CompleteProfile() {
                         )}
                     </div>
 
+                    {/* رقم الموبايل */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                             <FaPhone className="text-gray-400" />
@@ -232,6 +233,31 @@ export default function CompleteProfile() {
                         )}
                     </div>
 
+                    {/* النبذة الشخصية */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            <FaPen className="text-gray-400" />
+                            النبذة الشخصية
+                        </label>
+                        <textarea
+                            placeholder="اكتب نبذة قصيرة عن نفسك..."
+                            value={bio}
+                            onChange={(e) => setBio(e.target.value)}
+                            rows={4}
+                            className={`w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 transition-all resize-none ${errors.bio
+                                ? "border-red-300 focus:ring-red-500 bg-red-50"
+                                : "border-gray-300 focus:ring-indigo-500 focus:border-indigo-500"
+                                }`}
+                        />
+                        {errors.bio && (
+                            <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
+                                <FaTimes className="text-xs" />
+                                {errors.bio}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* زر الحفظ */}
                     <button
                         type="submit"
                         disabled={isLoading}

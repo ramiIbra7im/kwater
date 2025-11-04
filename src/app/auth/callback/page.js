@@ -1,59 +1,49 @@
-// src/app/auth/callback/page.js
 'use client'
 import { useSearchParams, useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { FaSpinner, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa"
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-export default function VerifyEmailCallback() {
+// ⚡ مكون الغلاف يضمن وجود Suspense boundary
+export default function VerifyEmailWrapper() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+                <div className="text-center text-gray-700">
+                    <FaSpinner className="animate-spin text-3xl text-blue-500 mx-auto mb-4" />
+                    <p>جاري التحميل...</p>
+                </div>
+            </div>
+        }>
+            <VerifyEmailCallback />
+        </Suspense>
+    )
+}
+
+function VerifyEmailCallback() {
     const router = useRouter()
     const params = useSearchParams()
     const [status, setStatus] = useState('loading')
     const [message, setMessage] = useState('جاري التحقق من رابط التفعيل...')
-    const supabase = createClientComponentClient()
 
     useEffect(() => {
         const code = params.get('code')
-        const error = params.get('error')
-        const errorDescription = params.get('error_description')
-
-        // إذا كان هناك خطأ في URL نفسه
-        if (error) {
+        if (!code) {
             setStatus('error')
-            setMessage(errorDescription || error)
+            setMessage('رمز التحقق غير موجود في الرابط.')
             return
         }
 
-        const verify = async () => {
-            if (!code) {
-                setStatus('error')
-                setMessage('رابط التفعيل غير صالح')
-                return
-            }
-
+        const verifyEmail = async () => {
             try {
-                // نطلب من السيرفر يعمل exchange
-                const response = await fetch(`/auth/callback/exchange?code=${code}`)
-                const data = await response.json()
+                const res = await fetch(`/auth/callback/route?code=${code}`)
+                if (!res.ok) throw new Error('فشل في الاتصال بالسيرفر.')
 
-                if (!response.ok || data.error) {
-                    throw new Error(data.message || 'حدث خطأ أثناء التفعيل.')
-                }
-
-                // 🔄 تحديث الـ session بعد التفعيل الناجح
-                const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession()
-
-                if (sessionError) {
-                    console.error('Session error:', sessionError)
-                }
+                const data = await res.json()
+                if (data.error) throw new Error(data.error)
 
                 setStatus('success')
-                setMessage('تم تفعيل حسابك بنجاح! جاري توجيهك...')
-
-                // تأخير التوجيه ليعطي فرصة لرؤية رسالة النجاح
-                setTimeout(() => {
-                    router.push('/Complete-account')
-                }, 2000)
+                setMessage('تم تفعيل حسابك بنجاح! جاري تحويلك لإكمال الملف الشخصي...')
+                setTimeout(() => router.push('/Complete-account'), 2000)
             } catch (err) {
                 console.error('Verification error:', err)
                 setStatus('error')
@@ -61,8 +51,8 @@ export default function VerifyEmailCallback() {
             }
         }
 
-        verify()
-    }, [params, router, supabase])
+        verifyEmail()
+    }, [params, router])
 
     const getStatusIcon = () => {
         switch (status) {
@@ -93,17 +83,21 @@ export default function VerifyEmailCallback() {
 
                     <div className="relative z-10 p-8 text-center">
                         <div className="flex justify-center mb-6">
-                            <div className={`p-4 rounded-2xl transition-all duration-500 ${status === 'loading' ? 'bg-blue-100' :
-                                status === 'success' ? 'bg-green-100' :
-                                    'bg-red-100'
+                            <div className={`p-4 rounded-2xl transition-all duration-500 ${status === 'loading'
+                                ? 'bg-blue-100'
+                                : status === 'success'
+                                    ? 'bg-green-100'
+                                    : 'bg-red-100'
                                 }`}>
                                 {getStatusIcon()}
                             </div>
                         </div>
 
-                        <h2 className={`text-2xl font-bold mb-3 transition-all duration-500 ${status === 'loading' ? 'text-gray-800' :
-                            status === 'success' ? 'text-green-800' :
-                                'text-red-800'
+                        <h2 className={`text-2xl font-bold mb-3 transition-all duration-500 ${status === 'loading'
+                            ? 'text-gray-800'
+                            : status === 'success'
+                                ? 'text-green-800'
+                                : 'text-red-800'
                             }`}>
                             {message}
                         </h2>
@@ -111,7 +105,7 @@ export default function VerifyEmailCallback() {
                         <p className="text-gray-600 mb-6 leading-relaxed">
                             {status === 'loading' && 'نحن نعالج رابط التفعيل، من فضلك انتظر...'}
                             {status === 'success' && 'تم تفعيل حسابك! جاري توجيهك لإكمال الملف الشخصي.'}
-                            {status === 'error' && 'يمكنك تسجيل الدخول يدوياً أو محاولة التسجيل مرة أخرى.'}
+                            {status === 'error' && 'يمكنك تسجيل الدخول يدويًا أو محاولة التسجيل مرة أخرى.'}
                         </p>
 
                         {status === 'loading' && (

@@ -1,102 +1,80 @@
-// src/app/auth/callback/page.js
 'use client'
 import { useEffect, useState, Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { FaSpinner, FaCheckCircle, FaExclamationTriangle, FaRedo } from "react-icons/fa"
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
-// المكون الرئيسي
+// ✅ المكون الأساسي
 function CallbackContent() {
     const router = useRouter()
-    const params = useSearchParams()
-    const [status, setStatus] = useState('loading')
-    const [message, setMessage] = useState('جاري تفعيل حسابك...')
-    const [retryCount, setRetryCount] = useState(0)
     const supabase = createClientComponentClient()
+    const [status, setStatus] = useState('loading')
+    const [message, setMessage] = useState('جاري تفعيل الحساب...')
+    const [retryCount, setRetryCount] = useState(0)
 
-    const handleAuthCallback = async () => {
-        const code = params.get('code')
-        const error = params.get('error')
-        const errorDescription = params.get('error_description')
-
-        // إذا كان هناك خطأ في الرابط
-        if (error) {
-            setStatus('error')
-            setMessage(errorDescription || `خطأ في الرابط: ${error}`)
-            return
-        }
-
-        if (!code) {
-            setStatus('error')
-            setMessage('رابط التفعيل غير صالح')
-            return
-        }
-
+    const handleAuth = async () => {
         try {
-            // 1. استبدال الكود بالسيشن
-            const response = await fetch(`/auth/callback/exchange?code=${encodeURIComponent(code)}`)
-            const data = await response.json()
+            // 1️⃣ الحصول على السيشن
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+            if (sessionError || !sessionData.session) throw new Error("فشل في الحصول على الجلسة")
 
-            if (!response.ok || data.error) {
-                throw new Error(data.message || 'فشل في تفعيل الحساب')
-            }
-
-            // 2. الحصول على بيانات المستخدم
+            // 2️⃣ الحصول على بيانات المستخدم
             const { data: { user }, error: userError } = await supabase.auth.getUser()
+            if (userError || !user) throw new Error("لم يتم العثور على المستخدم")
 
-            if (userError || !user) {
-                throw new Error('لم نتمكن من العثور على حسابك')
-            }
-
-            setStatus('success')
-            setMessage('تم تفعيل حسابك بنجاح! جاري التحقق من بياناتك...')
-
-            // 3. التحقق من اكتمال البيانات في profiles
+            // 3️⃣ التحقق من البيانات داخل جدول profiles
             const { data: profileData, error: profileError } = await supabase
-                .from('profiles')
-                .select('full_name, phone, bio')
-                .eq('id', user.id)
+                .from("profiles")
+                .select("full_name, bio, avatar_url, phone_number")
+                .eq("id", user.id)
                 .single()
 
-            // تأخير بسيط لرؤية رسالة النجاح
+            if (profileError) throw new Error("فشل في الوصول إلى بيانات الملف الشخصي")
+
+            setStatus('success')
+            setMessage('تم التحقق بنجاح!')
+
+            // 4️⃣ التوجيه حسب حالة البيانات
             setTimeout(() => {
-                if (profileError || !profileData || !profileData.full_name) {
-                    // البيانات ناقصة → إكمال الملف الشخصي
-                    router.push('/Complete-account')
+                if (
+                    !profileData ||
+                    !profileData.full_name ||
+                    !profileData.bio ||
+                    !profileData.avatar_url ||
+                    !profileData.phone_number
+                ) {
+                    router.push("/Complete-account")
                 } else {
-                    // البيانات مكتملة → الصفحة الرئيسية
-                    router.push('/')
+                    router.push("/")
                 }
-            }, 2000)
+            }, 1500)
 
-        } catch (err) {
-            console.error('Auth callback error:', err)
-
-            // إعادة المحاولة تلقائياً
+        } catch (error) {
+            console.error(error)
             if (retryCount < 2) {
                 setStatus('loading')
                 setMessage(`محاولة إعادة الاتصال... (${retryCount + 1}/2)`)
                 setRetryCount(prev => prev + 1)
-                setTimeout(() => handleAuthCallback(), 2000)
+                setTimeout(() => handleAuth(), 2000)
             } else {
                 setStatus('error')
-                setMessage(err.message || 'حدث خطأ أثناء التفعيل')
+                setMessage(error.message || 'حدث خطأ أثناء تفعيل الحساب')
             }
         }
     }
 
     useEffect(() => {
-        handleAuthCallback()
+        handleAuth()
     }, [])
 
     const handleRetry = () => {
         setStatus('loading')
         setMessage('جاري إعادة المحاولة...')
         setRetryCount(0)
-        handleAuthCallback()
+        handleAuth()
     }
 
-    // ... باقي كود الواجهة (نفس الكود السابق)
+    // 🎨 واجهة الـ UI (نفس تصميمك السابق)
     const getStatusIcon = () => {
         switch (status) {
             case 'loading': return <FaSpinner className="animate-spin text-3xl text-blue-500" />
@@ -165,7 +143,7 @@ function CallbackContent() {
     )
 }
 
-// مكون التحميل
+// 🌀 واجهة التحميل
 function LoadingFallback() {
     return (
         <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -177,7 +155,7 @@ function LoadingFallback() {
     )
 }
 
-// التصدير مع Suspense
+// 🧩 التصدير النهائي
 export default function CallbackPage() {
     return (
         <Suspense fallback={<LoadingFallback />}>

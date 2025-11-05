@@ -126,18 +126,21 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
 
     // التحقق إذا كانت الخاطرة محفوظة
     const checkIfSaved = async () => {
+        if (!user) return;
+
         try {
             const { data, error } = await supabase
                 .from('saved_posts')
                 .select('id')
                 .eq('user_id', user.id)
-                .eq('post_id', post.id)
-                .single();
+                .eq('post_id', post.id);
 
-            if (data) {
-                setSaved(true);
+            if (error) {
+                setSaved(false);
+            } else {
+                setSaved(data.length > 0);
             }
-        } catch (error) {
+        } catch (err) {
             setSaved(false);
         }
     };
@@ -190,15 +193,20 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
     };
 
     // التعامل مع الحفظ
+    // التعامل مع الحفظ بشكل آمن ومتزامن
     const handleSave = async () => {
         if (!user) {
             toast.error("يجب تسجيل الدخول لحفظ الخواطر");
             return;
         }
 
+        // منع الضغط المتكرر أثناء العملية
+        if (isLoading) return;
+
         setIsLoading(true);
         try {
             if (saved) {
+                // إزالة الحفظ
                 const { error } = await supabase
                     .from('saved_posts')
                     .delete()
@@ -206,14 +214,19 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
                     .eq('post_id', post.id);
 
                 if (error) throw error;
+
                 setSaved(false);
+                toast.success("تم إزالة الخاطرة من المحفوظات");
             } else {
+                // حفظ الخاطرة
                 const { error } = await supabase
                     .from('saved_posts')
                     .insert([{ user_id: user.id, post_id: post.id }]);
 
                 if (error) throw error;
+
                 setSaved(true);
+                toast.success("تم حفظ الخاطرة بنجاح");
             }
         } catch (error) {
             toast.error("حدث خطأ أثناء حفظ الخاطرة");
@@ -271,7 +284,7 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
             className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-500 group transform hover:-translate-y-1"
         >
             {/* الهيدر مع التدرج اللوني */}
-            <div className={`${getCategoryColor(post.category)} p-6 text-white relative overflow-hidden`}>
+            <div className={`${getCategoryColor(post.category)} p-6 text-white relative overflow-visible`}> {/* غيرنا overflow-hidden لـ overflow-visible */}
                 <div className="absolute inset-0 bg-black/10"></div>
 
                 <div className="absolute top-0 left-0 w-20 h-20 bg-white/10 rounded-full -translate-x-10 -translate-y-10"></div>
@@ -290,25 +303,22 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
-                                {/* نقطة نشط الان */}
-                                {/* <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 border-2 border-white rounded-full shadow-lg"></div> */}
                             </div>
                             <div className="flex flex-col">
-                                {/* التعديل هنا فقط - أضف علامة صاحب الموقع */}
                                 <div className="flex items-center gap-2 mb-1">
                                     <h3 className="font-bold text-white drop-shadow-sm text-base">
                                         {post.user?.full_name || "مستخدم مجهول"}
                                     </h3>
-                                    {post.user?.is_owner && <OwnerBadge />}
                                 </div>
                                 <div className="flex items-center gap-2 text-white/80 text-xs">
-                                    <span className="flex"><FaCalendar /> {formatDate(post.created_at)}  </span>
+                                    {post.user?.is_owner && <OwnerBadge />}
+                                    <span className="flex"><FaCalendar className="me-2" /> {formatDate(post.created_at)}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* أزرار الإجراءات */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 relative"> {/* أضفنا relative هنا */}
                             <PostActions
                                 post={post}
                                 user={user}
@@ -331,7 +341,7 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
 
                     {/* التصنيف */}
                     {post.category && (
-                        <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl border border-white/30">
+                        <div className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl border-white/30">
                             <span className="text-sm">{getCategoryIcon(post.category)}</span>
                             <span className="font-medium text-white text-xs">{post.category}</span>
                         </div>
@@ -341,7 +351,6 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
 
             {/* محتوى الخاطرة */}
             <div className="p-6 relative">
-                <div className="absolute top-0 left-0 w-16 h-16 bg-linear-to-br from-amber-50 to-orange-50 rounded-br-2xl opacity-40"></div>
 
                 <div className="relative z-10">
                     <p className="text-gray-800 leading-relaxed text-base font-normal whitespace-pre-line mb-4 text-right">

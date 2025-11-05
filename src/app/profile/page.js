@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { FaUser, FaEdit, FaSave, FaTimes, FaCamera, FaHeart, FaComment, FaShare, FaSignOutAlt, FaCog, FaHistory } from "react-icons/fa"
+import { FaUser, FaEdit, FaSave, FaTimes, FaCamera, FaHeart, FaSignOutAlt, FaHistory } from "react-icons/fa"
 import { supabase } from "../../lib/supabaseClient"
-import OwnerBadge from "../components/OwnerBadge" // أضف هذا الاستيراد
+import OwnerBadge from "../components/OwnerBadge"
 import toast from "react-hot-toast"
 
 export default function ProfilePage() {
@@ -18,7 +18,6 @@ export default function ProfilePage() {
     const [userPosts, setUserPosts] = useState([])
     const [activeTab, setActiveTab] = useState('posts')
 
-    // بيانات التعديل
     const [editData, setEditData] = useState({
         full_name: '',
         phone_number: '',
@@ -39,7 +38,6 @@ export default function ProfilePage() {
             }
 
             setUser(user)
-
             const { data: profile, error } = await supabase
                 .from('profiles')
                 .select('*')
@@ -79,7 +77,6 @@ export default function ProfilePage() {
 
     const handleSaveProfile = async () => {
         if (!user) return
-
         setSaving(true)
         try {
             const { error } = await supabase
@@ -94,13 +91,10 @@ export default function ProfilePage() {
 
             if (error) throw error
 
-            setProfile(prev => ({
-                ...prev,
-                ...editData
-            }))
+            setProfile(prev => ({ ...prev, ...editData }))
             setIsEditing(false)
             toast.success('تم تحديث الملف الشخصي بنجاح!')
-        } catch (error) {
+        } catch {
             toast.error('حدث خطأ أثناء تحديث الملف الشخصي')
         } finally {
             setSaving(false)
@@ -109,8 +103,7 @@ export default function ProfilePage() {
 
     const handleSignOut = async () => {
         try {
-            const { error } = await supabase.auth.signOut()
-            if (error) throw error
+            await supabase.auth.signOut()
             router.push('/auth/login')
         } catch (error) {
         }
@@ -120,13 +113,11 @@ export default function ProfilePage() {
         const file = e.target.files[0]
         if (!file || !user) return
 
-        // التحقق من نوع الملف
         if (!file.type.startsWith('image/')) {
             toast.error("الرجاء اختيار صورة فقط")
             return
         }
 
-        // التحقق من حجم الملف
         if (file.size > 5 * 1024 * 1024) {
             toast.error("حجم الصورة يجب أن يكون أقل من 5MB")
             return
@@ -136,19 +127,16 @@ export default function ProfilePage() {
             const fileExt = file.name.split('.').pop()
             const fileName = `${user.id}/${Date.now()}.${fileExt}`
 
-            // رفع الصورة
             const { error: uploadError } = await supabase.storage
                 .from('avatars')
                 .upload(fileName, file, { upsert: true })
 
             if (uploadError) throw uploadError
 
-            // الحصول على رابط الصورة
             const { data: { publicUrl } } = supabase.storage
                 .from('avatars')
                 .getPublicUrl(fileName)
 
-            // تحديث البروفايل برابط الصورة الجديدة
             const { error: updateError } = await supabase
                 .from('profiles')
                 .update({
@@ -159,13 +147,9 @@ export default function ProfilePage() {
 
             if (updateError) throw updateError
 
-            setProfile(prev => ({
-                ...prev,
-                avatar_url: publicUrl
-            }))
-
+            setProfile(prev => ({ ...prev, avatar_url: publicUrl }))
             toast.success('تم تحديث الصورة الشخصية بنجاح!')
-        } catch (error) {
+        } catch {
             toast.error('حدث خطأ أثناء رفع الصورة')
         }
     }
@@ -193,34 +177,30 @@ export default function ProfilePage() {
 
     if (!profile) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="text-center">
-                    <p className="text-gray-600">لم يتم العثور على الملف الشخصي</p>
-                    <button
-                        onClick={() => router.push('/auth/login')}
-                        className="mt-4 bg-amber-500 text-white px-6 py-2 rounded-lg hover:bg-amber-600 transition"
-                    >
-                        تسجيل الدخول
-                    </button>
-                </div>
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 text-center">
+                <p className="text-gray-600 mb-4">لم يتم العثور على الملف الشخصي</p>
+                <button
+                    onClick={() => router.push('/auth/login')}
+                    className="bg-amber-500 text-white px-6 py-2 rounded-lg hover:bg-amber-600 transition"
+                >
+                    تسجيل الدخول
+                </button>
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-4xl mx-auto px-4">
+        <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-4xl mx-auto">
                 {/* بطاقة البروفايل */}
                 <div className="bg-white rounded-3xl shadow-lg overflow-hidden mb-6">
-                    {/* خلفية البروفايل */}
-                    <div className="h-32 bg-gradient-to-r from-amber-400 to-orange-500"></div>
+                    <div className="h-32 bg-linear-to-r from-amber-400 to-orange-500"></div>
 
-                    {/* محتوى البروفايل */}
-                    <div className="relative px-6 pb-6">
+                    <div className="relative px-2 pb-6">
                         {/* الصورة الشخصية */}
-                        <div className="relative -top-16 mb-4">
+                        <div className="relative -top-16 mb-4 flex justify-start">
                             <div className="relative inline-block">
-                                <div className="w-32 h-32 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-lg">
+                                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-white bg-gray-200 overflow-hidden shadow-lg">
                                     {profile.avatar_url ? (
                                         <Image
                                             src={profile.avatar_url}
@@ -236,110 +216,87 @@ export default function ProfilePage() {
                                     )}
                                 </div>
 
-                                {/* زر تغيير الصورة */}
-                                <label className="absolute bottom-2 right-2 w-10 h-10 bg-amber-500 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-amber-600 transition shadow-lg">
+                                <label className="absolute bottom-2 right-2 w-9 h-9 sm:w-10 sm:h-10 bg-amber-500 text-white rounded-full flex items-center justify-center cursor-pointer hover:bg-amber-600 transition shadow-lg">
                                     <FaCamera className="text-sm" />
-                                    <input
-                                        type="file"
-                                        onChange={handleImageUpload}
-                                        accept="image/*"
-                                        className="hidden"
-                                    />
+                                    <input type="file" onChange={handleImageUpload} accept="image/*" className="hidden" />
                                 </label>
                             </div>
                         </div>
 
-                        {/* معلومات البروفايل */}
-                        <div className="-mt-12">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    {/* التعديل هنا - أضف علامة صاحب الموقع */}
-                                    <div className="flex items-center gap-3 mb-2">
+                        {/* معلومات المستخدم */}
+                        <div className="-mt-12 text-center sm:text-left">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+                                    <div className="flex items-center justify-center gap-4 mb-1">
                                         {isEditing ? (
                                             <input
                                                 type="text"
                                                 value={editData.full_name}
                                                 onChange={(e) => setEditData(prev => ({ ...prev, full_name: e.target.value }))}
-                                                className="text-2xl font-bold bg-gray-100 border border-gray-300 rounded-lg px-3 py-1"
+                                                className="text-xl sm:text-2xl font-bold bg-gray-100 border border-gray-300 rounded-lg px-3 py-1"
                                             />
                                         ) : (
-                                            <h1 className="text-2xl font-bold text-gray-900">
+                                            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                                                 {profile.full_name || 'بدون اسم'}
                                             </h1>
                                         )}
                                         {profile.is_owner && <OwnerBadge />}
-                                    </div>
-                                    <p className="text-gray-500">{profile.email}</p>
-                                    {/* {profile.is_owner && (
-                                        <p className="text-amber-600 font-medium text-sm mt-1">
-                                            مؤسس ومنشئ الموقع
-                                        </p>
-                                    )} */}
+                                    <p className="text-gray-500 text-sm">{profile.email}</p>
                                 </div>
 
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap justify-center sm:justify-end gap-2">
                                     {isEditing ? (
                                         <>
                                             <button
                                                 onClick={handleSaveProfile}
                                                 disabled={saving}
-                                                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center gap-2 disabled:opacity-50"
+                                                className="bg-green-500 text-white px-3 py-2 rounded-lg hover:bg-green-600 transition flex items-center gap-1 text-sm sm:text-base disabled:opacity-50"
                                             >
                                                 <FaSave />
-                                                {saving ? 'جاري الحفظ...' : 'حفظ'}
+                                                {saving ? 'جارٍ الحفظ...' : 'حفظ'}
                                             </button>
                                             <button
                                                 onClick={() => setIsEditing(false)}
-                                                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition flex items-center gap-2"
+                                                className="bg-gray-500 text-white px-3 py-2 rounded-lg hover:bg-gray-600 transition flex items-center gap-1 text-sm sm:text-base"
                                             >
-                                                <FaTimes />
-                                                إلغاء
+                                                <FaTimes /> إلغاء
                                             </button>
                                         </>
                                     ) : (
                                         <>
                                             <button
                                                 onClick={() => setIsEditing(true)}
-                                                className="bg-amber-500 text-white px-4 py-2 rounded-lg hover:bg-amber-600 transition flex items-center gap-2"
+                                                className="bg-amber-500 text-white px-3 py-2 rounded-lg hover:bg-amber-600 transition flex items-center gap-1 text-sm sm:text-base"
                                             >
-                                                <FaEdit />
-                                                تعديل
+                                                <FaEdit /> تعديل
                                             </button>
                                             <button
                                                 onClick={handleSignOut}
-                                                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center gap-2"
+                                                className="bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 transition flex items-center gap-1 text-sm sm:text-base"
                                             >
-                                                <FaSignOutAlt />
-                                                تسجيل الخروج
+                                                <FaSignOutAlt /> خروج
                                             </button>
                                         </>
                                     )}
                                 </div>
                             </div>
 
-                            {/* المعلومات الإضافية */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                <div className="text-center">
+                            {/* إحصائيات */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center mb-6">
+                                <div>
                                     <div className="text-2xl font-bold text-amber-600">{userPosts.length}</div>
-                                    <div className="text-gray-500">الخواطر</div>
+                                    <div className="text-gray-500 text-sm">الخواطر</div>
                                 </div>
-                                <div className="text-center">
+                                <div>
                                     <div className="text-2xl font-bold text-amber-600">
                                         {userPosts.reduce((acc, post) => acc + (post.likes_count || 0), 0)}
                                     </div>
-                                    <div className="text-gray-500">الإعجابات</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-amber-600">
-                                        {userPosts.reduce((acc, post) => acc + (post.comments_count || 0), 0)}
-                                    </div>
-                                    <div className="text-gray-500">التعليقات</div>
+                                    <div className="text-gray-500 text-sm">الإعجابات</div>
                                 </div>
                             </div>
 
                             {/* السيرة الذاتية */}
                             <div className="mb-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">عن المستخدم</h3>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2 text-start sm:text-right">عن المستخدم</h3>
                                 {isEditing ? (
                                     <textarea
                                         value={editData.bio}
@@ -349,7 +306,7 @@ export default function ProfilePage() {
                                         maxLength={500}
                                     />
                                 ) : (
-                                    <p className="text-gray-700 leading-relaxed">
+                                    <p className="text-gray-700 leading-relaxed text-start text-sm sm:text-right pr-10">
                                         {profile.bio || 'لم يتم إضافة سيرة ذاتية بعد.'}
                                     </p>
                                 )}
@@ -357,12 +314,8 @@ export default function ProfilePage() {
 
                             {/* معلومات الاتصال */}
                             <div className="bg-gray-50 rounded-xl p-4">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-3">معلومات الاتصال</h3>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-600">البريد الإلكتروني:</span>
-                                        <span className="text-gray-900 font-medium">{profile.email}</span>
-                                    </div>
+                                <h3 className="text-lg text-start font-semibold text-gray-900 mb-3">معلومات الاتصال</h3>
+                                <div className="space-y-2 text-sm sm:text-base">
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-600">رقم الهاتف:</span>
                                         {isEditing ? (
@@ -381,17 +334,8 @@ export default function ProfilePage() {
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-gray-600">تاريخ الانضمام:</span>
-                                        <span className="text-gray-900 font-medium">
-                                            {formatDate(profile.created_at)}
-                                        </span>
+                                        <span className="text-gray-900 font-medium">{formatDate(profile.created_at)}</span>
                                     </div>
-                                    {/* إضافة معلومات الدور */}
-                                    {/* {profile.is_owner && (
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-gray-600">الدور:</span>
-                                            <span className="text-amber-600 font-bold">صاحب الموقع</span>
-                                        </div>
-                                    )} */}
                                 </div>
                             </div>
                         </div>
@@ -401,35 +345,29 @@ export default function ProfilePage() {
                 {/* تبويبات المحتوى */}
                 <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
                     <div className="border-b border-gray-200">
-                        <nav className="flex -mb-px">
+                        <nav className="flex flex-wrap -mb-px">
                             <button
                                 onClick={() => setActiveTab('posts')}
-                                className={`flex-1 py-4 px-6 text-center font-medium transition ${activeTab === 'posts'
+                                className={`flex-1 py-3 text-center font-medium transition ${activeTab === 'posts'
                                     ? 'text-amber-600 border-b-2 border-amber-600'
-                                    : 'text-gray-500 hover:text-gray-700'
-                                    }`}
+                                    : 'text-gray-500 hover:text-gray-700'}`}
                             >
-                                <FaHistory className="inline ml-2" />
-                                خواطري
+                                <FaHistory className="inline ml-2" /> خواطري
                             </button>
                             <button
                                 onClick={() => setActiveTab('likes')}
-                                className={`flex-1 py-4 px-6 text-center font-medium transition ${activeTab === 'likes'
+                                className={`flex-1 py-3 text-center font-medium transition ${activeTab === 'likes'
                                     ? 'text-amber-600 border-b-2 border-amber-600'
-                                    : 'text-gray-500 hover:text-gray-700'
-                                    }`}
+                                    : 'text-gray-500 hover:text-gray-700'}`}
                             >
-                                <FaHeart className="inline ml-2" />
-                                المعجبات
+                                <FaHeart className="inline ml-2" /> المعجبات
                             </button>
                         </nav>
                     </div>
 
-                    {/* محتوى التبويبات */}
                     <div className="p-6">
                         {activeTab === 'posts' && (
                             <div>
-                                <h3 className="text-xl font-semibold text-gray-900 mb-4">خواطري المنشورة</h3>
                                 {userPosts.length === 0 ? (
                                     <div className="text-center py-8">
                                         <FaHistory className="text-4xl text-gray-300 mx-auto mb-4" />
@@ -446,17 +384,11 @@ export default function ProfilePage() {
                                         {userPosts.map((post) => (
                                             <div key={post.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                                                 <p className="text-gray-800 mb-3 leading-relaxed">{post.content}</p>
-                                                <div className="flex items-center justify-between text-sm text-gray-500">
-                                                    <div className="flex items-center gap-4">
-                                                        <span className="flex items-center gap-1">
-                                                            <FaHeart className="text-red-400" />
-                                                            {post.likes_count || 0}
-                                                        </span>
-                                                        <span className="flex items-center gap-1">
-                                                            <FaComment className="text-blue-400" />
-                                                            {post.comments_count || 0}
-                                                        </span>
-                                                    </div>
+                                                <div className="flex flex-wrap items-center justify-between text-sm text-gray-500 gap-2">
+                                                    <span className="flex items-center gap-1">
+                                                        <FaHeart className="text-red-400" />
+                                                        {post.likes_count || 0}
+                                                    </span>
                                                     <span>{formatDate(post.created_at)}</span>
                                                 </div>
                                             </div>
@@ -467,12 +399,9 @@ export default function ProfilePage() {
                         )}
 
                         {activeTab === 'likes' && (
-                            <div>
-                                <h3 className="text-xl font-semibold text-gray-900 mb-4">الخواطر المعجبات</h3>
-                                <div className="text-center py-8">
-                                    <FaHeart className="text-4xl text-gray-300 mx-auto mb-4" />
-                                    <p className="text-gray-500">لم تعجب بأي خواطر بعد</p>
-                                </div>
+                            <div className="text-center py-8">
+                                <FaHeart className="text-4xl text-gray-300 mx-auto mb-4" />
+                                <p className="text-gray-500">لم تعجب بأي خواطر بعد</p>
                             </div>
                         )}
                     </div>

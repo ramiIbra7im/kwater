@@ -1,5 +1,6 @@
+/* eslint-disable @next/next/no-img-element */
 'use client'
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FaUser, FaPhone, FaCamera, FaCheck, FaTimes, FaPen } from "react-icons/fa";
 import { supabase } from "../../lib/supabaseClient";
@@ -15,27 +16,52 @@ export default function CompleteProfile() {
     const [avatarPreview, setAvatarPreview] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const [isChecking, setIsChecking] = useState(true); // لحالة التحقق الأولية
+
+    // ✅ التحقق أولاً من حالة المستخدم والبروفايل
+    useEffect(() => {
+        const checkProfileStatus = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user) {
+                    router.push("/auth/login");
+                    return;
+                }
+
+                const { data: profile, error } = await supabase
+                    .from("profiles")
+                    .select("profile_completed")
+                    .eq("id", user.id)
+                    .single();
+
+                if (error) {
+                    return;
+                }
+
+                if (profile?.profile_completed) {
+                    toast("✅ ملفك الشخصي مكتمل بالفعل، تم توجيهك إلى صفحة الملف الشخصي.");
+                    router.push("/profile");
+                }
+            } catch (err) {
+            } finally {
+                setIsChecking(false);
+            }
+        };
+
+        checkProfileStatus();
+    }, [router]);
 
     const validateForm = () => {
         const newErrors = {};
 
-        if (!fullName.trim()) {
-            newErrors.fullName = "الاسم الكامل مطلوب";
-        } else if (fullName.trim().length < 2) {
-            newErrors.fullName = "الاسم يجب أن يكون على الأقل حرفين";
-        }
+        if (!fullName.trim()) newErrors.fullName = "الاسم الكامل مطلوب";
+        else if (fullName.trim().length < 2) newErrors.fullName = "الاسم يجب أن يكون على الأقل حرفين";
 
-        if (!phoneNumber.trim()) {
-            newErrors.phoneNumber = "رقم الموبايل مطلوب";
-        } else if (!/^01[0125][0-9]{8}$/.test(phoneNumber)) {
-            newErrors.phoneNumber = "رقم الموبايل غير صحيح";
-        }
+        if (!phoneNumber.trim()) newErrors.phoneNumber = "رقم الموبايل مطلوب";
+        else if (!/^01[0125][0-9]{8}$/.test(phoneNumber)) newErrors.phoneNumber = "رقم الموبايل غير صحيح";
 
-        if (!bio.trim()) {
-            newErrors.bio = "النبذة الشخصية مطلوبة";
-        } else if (bio.trim().length < 10) {
-            newErrors.bio = "النبذة يجب أن تحتوي على 10 أحرف على الأقل";
-        }
+        if (!bio.trim()) newErrors.bio = "النبذة الشخصية مطلوبة";
+        else if (bio.trim().length < 10) newErrors.bio = "النبذة يجب أن تحتوي على 10 أحرف على الأقل";
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -48,12 +74,10 @@ export default function CompleteProfile() {
                 toast.error("الرجاء اختيار صورة فقط");
                 return;
             }
-
             if (file.size > 5 * 1024 * 1024) {
                 toast.error("حجم الصورة يجب أن يكون أقل من 5MB");
                 return;
             }
-
             setAvatarFile(file);
             const previewUrl = URL.createObjectURL(file);
             setAvatarPreview(previewUrl);
@@ -63,9 +87,7 @@ export default function CompleteProfile() {
     const removeImage = () => {
         setAvatarFile(null);
         setAvatarPreview("");
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
+        if (fileInputRef.current) fileInputRef.current.value = "";
     };
 
     const uploadImageToStorage = async (file, userId) => {
@@ -95,9 +117,7 @@ export default function CompleteProfile() {
             }
 
             let avatarUrl = "";
-            if (avatarFile) {
-                avatarUrl = await uploadImageToStorage(avatarFile, user.id);
-            }
+            if (avatarFile) avatarUrl = await uploadImageToStorage(avatarFile, user.id);
 
             const { error } = await supabase
                 .from("profiles")
@@ -115,7 +135,7 @@ export default function CompleteProfile() {
                 toast.error("حدث خطأ أثناء تحديث الملف الشخصي");
             } else {
                 toast.success("تم حفظ البيانات بنجاح!");
-                router.push("/");
+                router.push("/profile");
             }
         } catch (error) {
             toast.error("حدث خطأ أثناء حفظ البيانات");
@@ -124,10 +144,18 @@ export default function CompleteProfile() {
         }
     };
 
+    if (isChecking) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-linear-to-br from-blue-50 to-indigo-100">
+                <div className="text-gray-600 animate-pulse">جاري التحقق من الحساب...</div>
+            </div>
+        );
+    }
+
     return (
-        <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <div className="flex justify-center items-center min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 p-4">
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-200">
-                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-center text-white">
+                <div className="bg-linear-to-r from-indigo-600 to-purple-600 p-6 text-center text-white">
                     <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
                         <FaUser className="text-2xl" />
                     </div>
@@ -136,16 +164,12 @@ export default function CompleteProfile() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    {/* الصورة الشخصية */}
+                    {/* الصورة */}
                     <div className="text-center">
                         <div className="relative inline-block">
                             <div className="w-24 h-24 rounded-full border-4 border-indigo-100 overflow-hidden bg-gray-100">
                                 {avatarPreview ? (
-                                    <img
-                                        src={avatarPreview}
-                                        alt="Preview"
-                                        className="w-full h-full object-cover"
-                                    />
+                                    <img src={avatarPreview} alt="Preview" className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-gray-400">
                                         <FaUser className="text-3xl" />
@@ -179,17 +203,13 @@ export default function CompleteProfile() {
                             accept="image/*"
                             className="hidden"
                         />
-
-                        <p className="text-sm text-gray-500 mt-3">
-                            اختر صورة شخصية (اختياري)
-                        </p>
+                        <p className="text-sm text-gray-500 mt-3">اختر صورة شخصية (اختياري)</p>
                     </div>
 
-                    {/* الاسم الكامل */}
+                    {/* الاسم */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                            <FaUser className="text-gray-400" />
-                            الاسم الكامل
+                        <label className=" text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            <FaUser className="text-gray-400" /> الاسم الكامل
                         </label>
                         <input
                             type="text"
@@ -203,17 +223,15 @@ export default function CompleteProfile() {
                         />
                         {errors.fullName && (
                             <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                                <FaTimes className="text-xs" />
-                                {errors.fullName}
+                                <FaTimes className="text-xs" /> {errors.fullName}
                             </p>
                         )}
                     </div>
 
-                    {/* رقم الموبايل */}
+                    {/* الهاتف */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                            <FaPhone className="text-gray-400" />
-                            رقم الموبايل
+                        <label className=" text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            <FaPhone className="text-gray-400" /> رقم الموبايل
                         </label>
                         <input
                             type="tel"
@@ -227,17 +245,15 @@ export default function CompleteProfile() {
                         />
                         {errors.phoneNumber && (
                             <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                                <FaTimes className="text-xs" />
-                                {errors.phoneNumber}
+                                <FaTimes className="text-xs" /> {errors.phoneNumber}
                             </p>
                         )}
                     </div>
 
-                    {/* النبذة الشخصية */}
+                    {/* النبذة */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                            <FaPen className="text-gray-400" />
-                            النبذة الشخصية
+                        <label className=" text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                            <FaPen className="text-gray-400" /> النبذة الشخصية
                         </label>
                         <textarea
                             placeholder="اكتب نبذة قصيرة عن نفسك..."
@@ -251,17 +267,15 @@ export default function CompleteProfile() {
                         />
                         {errors.bio && (
                             <p className="text-red-500 text-sm mt-1 flex items-center gap-1">
-                                <FaTimes className="text-xs" />
-                                {errors.bio}
+                                <FaTimes className="text-xs" /> {errors.bio}
                             </p>
                         )}
                     </div>
 
-                    {/* زر الحفظ */}
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl py-3 font-medium hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:-translate-y-0.5 disabled:opacity-50 disabled:transform-none flex items-center justify-center gap-2"
+                        className="w-full bg-linear-to-r from-indigo-600 to-purple-600 text-white rounded-xl py-3 font-medium hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {isLoading ? (
                             <>
@@ -270,8 +284,7 @@ export default function CompleteProfile() {
                             </>
                         ) : (
                             <>
-                                <FaCheck />
-                                حفظ البيانات
+                                <FaCheck /> حفظ البيانات
                             </>
                         )}
                     </button>

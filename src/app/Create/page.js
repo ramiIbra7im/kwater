@@ -6,7 +6,6 @@ import { supabase } from "../../lib/supabaseClient"
 import { useAuth } from "../context/AuthContext"
 import toast from "react-hot-toast"
 
-console.log("🚀 [CreatePost] Component Mounted");
 export default function CreatePost() {
     const router = useRouter()
     const { user, loading } = useAuth() // ✅ استخدام AuthContext
@@ -20,16 +19,12 @@ export default function CreatePost() {
     const maxChars = 500
 
     useEffect(() => {
-        console.log("🔍 [CreatePost] Checking Auth State...");
-        console.log("➡️ loading:", loading);
-        console.log("➡️ user:", user);
+      
 
         if (!loading && !user) {
-            console.warn("🚫 No user found, redirecting to login...");
             toast.error("يجب تسجيل الدخول أولاً");
             router.push("/auth/login");
         } else if (!loading && user) {
-            console.log("✅ User found:", user.id);
         }
     }, [user, loading, router]);
 
@@ -93,7 +88,6 @@ export default function CreatePost() {
 
             return data.publicUrl
         } catch (error) {
-            console.error('Image upload failed:', error)
             throw error
         }
     }
@@ -136,7 +130,6 @@ export default function CreatePost() {
             toast.success("تم نشر الخاطرة بنجاح!")
             router.push("/")
         } catch (error) {
-            console.error("Error creating post:", error)
             toast.error("حدث خطأ أثناء نشر الخاطرة")
         } finally {
             setIsLoading(false)
@@ -162,10 +155,10 @@ export default function CreatePost() {
     if (!user) return null // ✅ لتجنب الوميض قبل التوجيه
 
     return (
-        <div className="min-h-screen bg-amber-50 py-8">
+        <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-2xl mx-auto px-4">
                 <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-amber-200">
-                    <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
+                    <div className="bg-linear-to-r from-amber-500 to-orange-500 p-6 text-white">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-white/20 rounded-xl">
                                 <FaEdit className="text-2xl" />
@@ -258,7 +251,7 @@ export default function CreatePost() {
                             <button
                                 type="submit"
                                 disabled={isLoading || !content.trim()}
-                                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-6 rounded-xl hover:from-amber-600 hover:to-orange-600 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+                                className="flex-1 bg-linear-to-r from-amber-500 to-orange-500 text-white py-3 px-6 rounded-xl hover:from-amber-600 hover:to-orange-600 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                             >
                                 {isLoading ? (
                                     <>

@@ -267,7 +267,7 @@ export default function PostPage() {
                 {/* بطاقة الخاطرة */}
                 <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
                     {/* الهيدر */}
-                    <div className={`bg-gradient-to-r ${getCategoryColor(post.category)} p-8 text-white relative overflow-hidden`}>
+                    <div className={`bg-linear-to-r ${getCategoryColor(post.category)} p-8 text-white relative overflow-hidden`}>
                         <div className="absolute inset-0 bg-black/10"></div>
                         <div className="relative z-10">
                             <div className="flex items-start justify-between mb-6">

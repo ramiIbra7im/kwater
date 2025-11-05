@@ -1,21 +1,18 @@
 'use client'
 import { useState, useMemo } from "react"
 import { usePosts } from "./hooks/usePosts"
-import SidebarRight from "./components/SidebarRight"
-import SidebarLeft from "./components/SidebarLeft"
+import TopPost from "./top-post/page"
+import Categories from "./categories/page"
 import PostsLoading from "./components/PostsLoading"
 import FilterBar from "./components/FilterBar"
 import EmptyState from "./components/EmptyState"
 import PostsList from "./components/PostsList"
 import Layout from "./components/Layout"
 import LoadingSpinner from "./components/Loading"
-
-// ✅ أضف هذا السطر 👇
 import { useAuth } from "./context/AuthContext"
 import ProtectedRoute from "./components/ProtectedRoute"
 
 export default function HomePage() {
-  // ✅ غير الاسم هنا كمان (الـ Context بيستخدم loading بدل isCheckingAuth)
   const { user, loading } = useAuth()
 
   const {
@@ -59,7 +56,14 @@ export default function HomePage() {
     setSelectedCategory("")
   }
 
-  // ✅ استخدم loading بدل isCheckingAuth
+  // ✅ تأكد من تمرير الـ setter functions بشكل صحيح
+  const categoriesProps = {
+    searchTerm,
+    setSearchTerm,
+    selectedCategory,
+    setSelectedCategory
+  }
+
   if (loading) {
     return <LoadingSpinner message="جاري التحقق من المصادقة..." />
   }
@@ -67,15 +71,15 @@ export default function HomePage() {
   return (
     <ProtectedRoute>
       <Layout
-        leftSidebar={
-          <SidebarLeft
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-          />
-        }
-        rightSidebar={<SidebarRight />}
+        leftSidebar={<TopPost />}
+        rightSidebar={<Categories {...categoriesProps} />}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        filteredPosts={filteredPosts}
+        totalPosts={posts.length}
+        onResetFilters={resetFilters}
       >
         {isLoading ? (
           <PostsLoading />

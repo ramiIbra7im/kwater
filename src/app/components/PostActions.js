@@ -1,6 +1,6 @@
 // src/app/components/PostActions.js
 'use client'
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { FaEllipsisH, FaEdit, FaTrash, FaCrown } from "react-icons/fa"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabaseClient"
@@ -45,19 +45,18 @@ function DeleteConfirmationModal({ isOpen, onClose, onConfirm, isLoading, isSite
         >
             <div className="space-y-4">
                 {/* أيقونة مختلفة حسب نوع الحذف */}
-                <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center ${
-                    isSiteOwner ? 'bg-purple-100' : 'bg-red-100'
-                }`}>
+                <div className={`w-12 h-12 mx-auto rounded-full flex items-center justify-center ${isSiteOwner ? 'bg-purple-100' : 'bg-red-100'
+                    }`}>
                     <FaTrash className={`text-lg ${isSiteOwner ? 'text-purple-600' : 'text-red-600'}`} />
                     {isSiteOwner && <FaCrown className="text-amber-500 text-xs ml-1" />}
                 </div>
-                
+
                 <h3 className="text-lg font-bold text-gray-900">
                     {isSiteOwner ? 'حذف كمشرف' : 'تأكيد الحذف'}
                 </h3>
-                
+
                 <p className="text-gray-600 leading-relaxed">
-                    {isSiteOwner 
+                    {isSiteOwner
                         ? 'أنت على وشك حذف هذه الخاطرة بصلاحية المشرف. هذا الإجراء لا يمكن التراجع عنه.'
                         : 'هل أنت متأكد من حذف هذه الخاطرة؟ هذا الإجراء لا يمكن التراجع عنه.'
                     }
@@ -74,11 +73,10 @@ function DeleteConfirmationModal({ isOpen, onClose, onConfirm, isLoading, isSite
                     <button
                         onClick={onConfirm}
                         disabled={isLoading}
-                        className={`flex-1 py-3 px-4 text-white rounded-xl transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2 ${
-                            isSiteOwner 
-                                ? 'bg-purple-600 hover:bg-purple-700' 
-                                : 'bg-red-600 hover:bg-red-700'
-                        }`}
+                        className={`flex-1 py-3 px-4 text-white rounded-xl transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2 ${isSiteOwner
+                            ? 'bg-purple-600 hover:bg-purple-700'
+                            : 'bg-red-600 hover:bg-red-700'
+                            }`}
                     >
                         {isLoading ? (
                             <>
@@ -100,15 +98,35 @@ export default function PostActions({ post, user, onPostDelete }) {
     const [isLoading, setIsLoading] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const router = useRouter()
+    const dropdownRef = useRef(null)
+    const buttonRef = useRef(null)
 
     // التحقق إذا كان المستخدم هو صاحب البوست أو صاحب الموقع
     const isOwner = user && (user.id === post.user_id || user.is_owner)
-    
+
     // إذا لم يكن صاحب البوست ولا صاحب الموقع، لا تظهر أي شيء
     if (!isOwner) return null
 
     // إذا كان صاحب الموقع وليس صاحب البوست، تظهر خيارات إضافية
     const isSiteOwner = user?.is_owner && user.id !== post.user_id
+
+    // إغلاق القائمة عند الضغط خارجها
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (isOpen &&
+                dropdownRef.current &&
+                buttonRef.current &&
+                !dropdownRef.current.contains(event.target) &&
+                !buttonRef.current.contains(event.target)) {
+                setIsOpen(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [isOpen])
 
     const handleEdit = () => {
         setIsOpen(false)
@@ -147,17 +165,16 @@ export default function PostActions({ post, user, onPostDelete }) {
 
             if (postError) throw postError
 
-            // إخطار الـ parent بالتحديث - مهم جداً
+            // إخطار الـ parent بالتحديث
             if (onPostDelete && typeof onPostDelete === 'function') {
                 onPostDelete(post.id)
             } else {
-                // إذا الـ onPostDelete مش شغالة، أعمل ريفرش للصفحة
                 window.location.reload()
             }
 
             toast.success(
-                isSiteOwner 
-                    ? "تم حذف الخاطرة كمشرف" 
+                isSiteOwner
+                    ? "تم حذف الخاطرة كمشرف"
                     : "تم حذف الخاطرة بنجاح"
             )
             setShowDeleteModal(false)
@@ -180,6 +197,7 @@ export default function PostActions({ post, user, onPostDelete }) {
         <div className="relative">
             {/* زر القائمة - النقاط الثلاث */}
             <button
+                ref={buttonRef}
                 onClick={() => setIsOpen(!isOpen)}
                 disabled={isLoading}
                 className="p-2 text-white hover:bg-white/30 rounded-xl transition-all duration-200 backdrop-blur-sm"
@@ -193,50 +211,48 @@ export default function PostActions({ post, user, onPostDelete }) {
 
             {/* القائمة المنسدلة */}
             {isOpen && (
-                <div className="fixed inset-0 z-[100]">
-                    <div
-                        className="absolute inset-0 bg-transparent"
-                        onClick={() => setIsOpen(false)}
-                    />
-
-                    <div className="absolute left-4 top-14 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-[101] min-w-48">
-                        {/* إذا كان صاحب الموقع يظهر تاج */}
-                        {isSiteOwner && (
-                            <div className="px-4 py-2 border-b border-gray-100">
-                                <div className="flex items-center gap-2 text-amber-600">
-                                    <FaCrown className="text-sm" />
-                                    <span className="text-xs font-bold">التدخل كمشرف</span>
-                                </div>
+                <div
+                    ref={dropdownRef}
+                    className="absolute left-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-200 py-2 z-50 min-w-48 transform origin-top-right"
+                    style={{
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.15)'
+                    }}
+                >
+                    {/* إذا كان صاحب الموقع يظهر تاج */}
+                    {isSiteOwner && (
+                        <div className="px-4 py-2 border-b border-gray-100">
+                            <div className="flex items-center gap-2 text-amber-600">
+                                <FaCrown className="text-sm" />
+                                <span className="text-xs font-bold">التدخل كمشرف</span>
                             </div>
-                        )}
+                        </div>
+                    )}
 
-                        {/* زر التعديل - يظهر فقط لصاحب البوست */}
-                        {!isSiteOwner && (
-                            <button
-                                onClick={handleEdit}
-                                className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors"
-                            >
-                                <FaEdit className="text-sm" />
-                                <span className="font-medium">تعديل الخاطرة</span>
-                            </button>
-                        )}
-
-                        {/* زر الحذف */}
+                    {/* زر التعديل - يظهر فقط لصاحب البوست */}
+                    {!isSiteOwner && (
                         <button
-                            onClick={handleDeleteClick}
-                            disabled={isLoading}
-                            className={`w-full flex items-center gap-3 px-4 py-3 transition-colors disabled:opacity-50 ${
-                                isSiteOwner 
-                                    ? 'text-purple-600 hover:bg-purple-50' 
-                                    : 'text-red-600 hover:bg-red-50'
-                            }`}
+                            onClick={handleEdit}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-amber-50 hover:text-amber-700 transition-colors text-right"
                         >
-                            <FaTrash className="text-sm" />
-                            <span className="font-medium">
-                                {isSiteOwner ? 'حذف كمشرف' : 'حذف الخاطرة'}
-                            </span>
+                            <FaEdit className="text-sm flex-shrink-0" />
+                            <span className="font-medium text-sm">تعديل الخاطرة</span>
                         </button>
-                    </div>
+                    )}
+
+                    {/* زر الحذف */}
+                    <button
+                        onClick={handleDeleteClick}
+                        disabled={isLoading}
+                        className={`w-full flex items-center gap-3 px-4 py-3 transition-colors disabled:opacity-50 text-right ${isSiteOwner
+                            ? 'text-purple-600 hover:bg-purple-50'
+                            : 'text-red-600 hover:bg-red-50'
+                            }`}
+                    >
+                        <FaTrash className="text-sm flex-shrink-0" />
+                        <span className="font-medium text-sm">
+                            {isSiteOwner ? 'حذف كمشرف' : 'حذف الخاطرة'}
+                        </span>
+                    </button>
                 </div>
             )}
 

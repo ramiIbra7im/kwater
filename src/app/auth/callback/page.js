@@ -39,7 +39,6 @@ export default function AuthCallback() {
                     .single()
 
                 if (profileError) {
-                    console.error('Profile fetch error:', profileError)
                     setStatus('error')
                     setMessage('حدث خطأ أثناء تحميل الملف الشخصي.')
                     toast.error('حدث خطأ أثناء تحميل بيانات الملف الشخصي.')
@@ -53,21 +52,19 @@ export default function AuthCallback() {
                     profile.bio?.trim()
 
                 if (isProfileComplete) {
-                    setStatus('success')
-                    setMessage('تم تفعيل الحساب بنجاح ✅')
+                    setMessage('تم تفعيل الحساب بنجاح ')
                     toast.success('تم تفعيل الحساب بنجاح! سيتم تحويلك للصفحة الرئيسية...')
                     setTimeout(() => router.push('/'), 2500)
                 } else {
                     setStatus('success')
-                    setMessage('تم تفعيل الحساب! يرجى استكمال بياناتك 📋')
+                    setMessage('تم تفعيل الحساب! يرجى استكمال بياناتك ')
                     toast('تم تفعيل الحساب بنجاح، لكن يجب استكمال الملف الشخصي.', {
                         icon: '✏️',
                         style: { background: '#fff8e1', color: '#444' },
                     })
-                    setTimeout(() => router.push('/complete-account'), 2500)
+                    setTimeout(() => router.push('/complete-profile'), 2500)
                 }
             } catch (err) {
-                console.error('Callback error:', err)
                 setStatus('error')
                 setMessage('حدث خطأ أثناء معالجة الطلب.')
                 toast.error('حدث خطأ غير متوقع. حاول مرة أخرى.')
@@ -100,7 +97,7 @@ export default function AuthCallback() {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
+        <div className="flex items-center justify-center min-h-screen bg-linear-to-br from-blue-50 via-white to-purple-50 p-4">
             <div className="w-full max-w-md mx-auto">
                 <div
                     className={`relative overflow-hidden rounded-3xl shadow-2xl border-2 ${getStatusColor()} transition-all duration-500`}
@@ -147,7 +144,7 @@ export default function AuthCallback() {
 
                         {status === 'loading' && (
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                                <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full animate-pulse"></div>
+                                <div className="bg-linear-to-r from-blue-500 to-purple-500 h-2 rounded-full animate-pulse"></div>
                             </div>
                         )}
                     </div>

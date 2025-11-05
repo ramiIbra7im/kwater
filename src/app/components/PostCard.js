@@ -26,7 +26,7 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
     const hasBeenViewed = useRef(false);
     const cardRef = useRef(null);
 
-    // تحديث الحالة عندما يتغير isLied prop
+    // تحديث الحالة عندما يتغير isLiked prop
     useEffect(() => {
         setLiked(isLiked);
     }, [isLiked]);
@@ -72,28 +72,41 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
     }, [post.id]);
 
     // زيادة عدد المشاهدات
+    // في دالة incrementViews في PostCard.js
     const incrementViews = async () => {
         try {
             const sessionId = await getSessionId();
             const hasViewed = await checkIfViewed(sessionId, post.id);
 
             if (!hasViewed) {
-                const { error } = await supabase
-                    .from('posts')
-                    .update({
-                        views_count: (post.views_count || 0) + 1
-                    })
-                    .eq('id', post.id);
+                // استخدام الدالة المخصصة
+                const { data, error } = await supabase
+                    .rpc('increment_views', {
+                        post_id: post.id
+                    });
 
-                if (!error) {
-                    setViews(prev => prev + 1);
+                if (!error && data.success) {
+                    setViews(data.newViewsCount);
                     await recordView(sessionId, post.id);
+                } else {
+                    // إذا فشلت الدالة، استخدم الطريقة العادية
+                    const newViewsCount = (post.views_count || 0) + 1;
+                    const { error: updateError } = await supabase
+                        .from('posts')
+                        .update({
+                            views_count: newViewsCount
+                        })
+                        .eq('id', post.id);
+
+                    if (!updateError) {
+                        setViews(newViewsCount);
+                        await recordView(sessionId, post.id);
+                    }
                 }
             }
         } catch (error) {
         }
     };
-
     // إنشاء معرف فريد للجلسة/الجهاز
     const getSessionId = async () => {
         let sessionId = localStorage.getItem('khateraty_session_id');
@@ -154,59 +167,46 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
 
         setIsLoading(true);
         try {
-            const newLikedState = !liked;
-            const newLikesCount = newLikedState ? likes + 1 : likes - 1;
+            // تحديث الواجهة فوراً (Optimistic Update)
+            const tempLiked = !liked;
+            const tempLikes = tempLiked ? likes + 1 : likes - 1;
 
-            if (newLikedState) {
-                const { error } = await supabase
-                    .from('likes')
-                    .insert([{ user_id: user.id, post_id: post.id }]);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase
-                    .from('likes')
-                    .delete()
-                    .eq('user_id', user.id)
-                    .eq('post_id', post.id);
-                if (error) throw error;
+            setLiked(tempLiked);
+            setLikes(tempLikes);
+
+            // استدعاء الدالة من الـ parent
+            const result = await onLike(post.id, likes, liked);
+
+            if (!result || !result.success) {
+                // إذا فشلت العملية، نرجع للحالة السابقة
+                setLiked(!tempLiked);
+                setLikes(likes);
+                throw new Error('فشل في تحديث الإعجاب');
             }
 
-            setLiked(newLikedState);
-            setLikes(newLikesCount);
-
-            await supabase
-                .from('posts')
-                .update({ likes_count: newLikesCount })
-                .eq('id', post.id);
-
-            if (onLike) {
-                onLike(post.id, newLikesCount, newLikedState);
-            }
+            // تحديث الحالة بالنتيجة النهائية من السيرفر
+            setLiked(result.newLikedState);
+            setLikes(result.newLikesCount);
 
         } catch (error) {
             toast.error("حدث خطأ أثناء تحديث الإعجاب");
-            setLiked(!liked);
-            setLikes(likes);
         } finally {
             setIsLoading(false);
         }
     };
 
     // التعامل مع الحفظ
-    // التعامل مع الحفظ بشكل آمن ومتزامن
     const handleSave = async () => {
         if (!user) {
             toast.error("يجب تسجيل الدخول لحفظ الخواطر");
             return;
         }
 
-        // منع الضغط المتكرر أثناء العملية
         if (isLoading) return;
 
         setIsLoading(true);
         try {
             if (saved) {
-                // إزالة الحفظ
                 const { error } = await supabase
                     .from('saved_posts')
                     .delete()
@@ -214,17 +214,14 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
                     .eq('post_id', post.id);
 
                 if (error) throw error;
-
                 setSaved(false);
                 toast.success("تم إزالة الخاطرة من المحفوظات");
             } else {
-                // حفظ الخاطرة
                 const { error } = await supabase
                     .from('saved_posts')
                     .insert([{ user_id: user.id, post_id: post.id }]);
 
                 if (error) throw error;
-
                 setSaved(true);
                 toast.success("تم حفظ الخاطرة بنجاح");
             }
@@ -284,7 +281,7 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
             className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-500 group transform hover:-translate-y-1"
         >
             {/* الهيدر مع التدرج اللوني */}
-            <div className={`${getCategoryColor(post.category)} p-6 text-white relative overflow-visible`}> {/* غيرنا overflow-hidden لـ overflow-visible */}
+            <div className={`${getCategoryColor(post.category)} p-6 text-white relative overflow-visible`}>
                 <div className="absolute inset-0 bg-black/10"></div>
 
                 <div className="absolute top-0 left-0 w-20 h-20 bg-white/10 rounded-full -translate-x-10 -translate-y-10"></div>
@@ -308,17 +305,23 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
                                 <div className="flex items-center gap-2 mb-1">
                                     <h3 className="font-bold text-white drop-shadow-sm text-base">
                                         {post.user?.full_name || "مستخدم مجهول"}
+                                        {post.user?.is_owner && <OwnerBadge className="ms-3" />}
                                     </h3>
                                 </div>
                                 <div className="flex items-center gap-2 text-white/80 text-xs">
-                                    {post.user?.is_owner && <OwnerBadge />}
+                                    {post.category && (
+                                        <div className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl border-white/30">
+                                            <span className="text-sm">{getCategoryIcon(post.category)}</span>
+                                            <span className="font-medium text-white text-xs">{post.category}</span>
+                                        </div>
+                                    )}
                                     <span className="flex"><FaCalendar className="me-2" /> {formatDate(post.created_at)}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* أزرار الإجراءات */}
-                        <div className="flex items-center gap-2 relative"> {/* أضفنا relative هنا */}
+                        <div className="flex items-center gap-2 relative">
                             <PostActions
                                 post={post}
                                 user={user}
@@ -338,22 +341,13 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
                             </button>
                         </div>
                     </div>
-
-                    {/* التصنيف */}
-                    {post.category && (
-                        <div className="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl border-white/30">
-                            <span className="text-sm">{getCategoryIcon(post.category)}</span>
-                            <span className="font-medium text-white text-xs">{post.category}</span>
-                        </div>
-                    )}
                 </div>
             </div>
 
             {/* محتوى الخاطرة */}
-            <div className="p-6 relative">
-
+            <div className="px-6 pt-2.5 relative">
                 <div className="relative z-10">
-                    <p className="text-gray-800 leading-relaxed text-base font-normal whitespace-pre-line mb-4 text-right">
+                    <p className="text-gray-800 leading-relaxed text-base font-normal  mb-4 text-right">
                         {post.content}
                     </p>
 
@@ -380,10 +374,10 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
                             <FaHeart className="text-amber-500 text-xs" />
                             <span className="font-medium text-amber-700 text-xs">{likes}</span>
                         </div>
-                        <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
+                        {/* <div className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
                             <FaEye className="text-gray-500 text-xs" />
                             <span className="font-medium text-gray-700 text-xs">{views}</span>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>
@@ -395,7 +389,7 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
                         onClick={handleLike}
                         disabled={isLoading}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all duration-300 ${liked
-                            ? "bg-linear-to-r from-red-500 to-pink-500 text-white shadow-md transform -translate-y-0.5"
+                            ? "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-md transform -translate-y-0.5"
                             : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300"
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
@@ -425,7 +419,7 @@ export default function PostCard({ post, onLike, isLiked = false, user, onPostDe
             </div>
 
             {/* خط زخرفي في الأسفل */}
-            <div className="h-1 bg-linear-to-r from-amber-200 via-orange-200 to-amber-200 opacity-60"></div>
+            <div className="h-1 bg-gradient-to-r from-amber-200 via-orange-200 to-amber-200 opacity-60"></div>
 
             {/* مودال المشاركة */}
             <ShareModal

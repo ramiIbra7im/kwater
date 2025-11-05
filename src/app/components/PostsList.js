@@ -7,7 +7,7 @@ export default function PostsList({
     likedPosts,
     user,
     onLike,
-    onPostDelete  // أضف هذا
+    onPostDelete
 }) {
     return (
         <div className="space-y-6">
@@ -17,14 +17,14 @@ export default function PostsList({
                     post={{
                         ...post,
                         user: post.profiles,
-                        likes: post.likes_count || 0,
+                        likes_count: post.likes_count || 0,
                         views_count: post.views_count || 0,
                         image: post.image_url
                     }}
-                    onLike={onLike}
+                    onLike={onLike} // تأكد من تمرير هذه الدالة
                     isLiked={likedPosts.has(post.id)}
                     user={user}
-                    onPostDelete={onPostDelete} // وأضف هذا
+                    onPostDelete={onPostDelete}
                 />
             ))}
         </div>

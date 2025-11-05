@@ -11,16 +11,16 @@ export default function OwnerBadge({ size = "sm", className = "" }) {
     return (
         <div className={`
             inline-flex items-center gap-1
-            bg-gradient-to-r from-amber-500 to-orange-500
+            bg-linear-to-r from-amber-500 to-orange-500
             text-white font-bold
             rounded-full
             ${sizes[size]}
-            ${className}
+            ${className} 
             shadow-lg shadow-amber-500/25
             border border-amber-300
         `}>
             <span><FaCrown /></span>
-            <span>صاحب الموقع</span>
+            {/* <span>صاحب الموقع</span> */}
         </div>
     )
 }

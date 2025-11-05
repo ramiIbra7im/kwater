@@ -48,7 +48,7 @@ export default function NavBar() {
         ? [
             { name: "الرئيسية", href: "/", icon: FaHome },
             { name: "اكتب خاطرة", href: "/Create", icon: FaPen },
-            ...(isMobile ? [{ name: "اشهر الخواطر", href: "/top-post", icon: FaFire }] : []),
+            ...(isMobile ? [{ name: "الأكثر أعجابا", href: "/top-post", icon: FaFire }] : []),
             { name: "المحفوظات", href: "/saved", icon: FaBookmark },
             { name: "صفحتي", href: "/profile", icon: FaUser },
         ]
@@ -62,12 +62,13 @@ export default function NavBar() {
         if (href === '/') return pathname === '/';
         return pathname.startsWith(href);
     };
-
+    // md: px - 6 lg: px - 8md:h-16 lg:h-20
     return (
         <>
             <nav
                 dir="ltr"
-                className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
+                className={`fixed 
+                            h-16   top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
                         ? 'bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100'
                         : 'bg-white shadow-sm'
                     }`}
@@ -92,8 +93,8 @@ export default function NavBar() {
                                     key={item.href}
                                     href={item.href}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 ${isActive(item.href)
-                                            ? "bg-amber-500 text-white shadow-lg transform -translate-y-0.5"
-                                            : "text-gray-700 hover:bg-amber-50 hover:text-amber-600"
+                                        ? "bg-amber-500 text-white shadow-lg transform -translate-y-0.5"
+                                        : "text-gray-700 hover:bg-amber-50 hover:text-amber-600"
                                         }`}
                                 >
                                     <item.icon className="text-sm" />
@@ -124,7 +125,7 @@ export default function NavBar() {
 
                 {/* القائمة المتنقلة للموبايل */}
                 {isMenuOpen && (
-                    <div className="md:hidden bg-white border-t border-gray-200 shadow-lg">
+                    <div className="md:hidden w-1/2 bg-white border-t border-gray-200 shadow-lg">
                         <div className="px-4 py-3 space-y-2">
                             {navItems.map((item) => (
                                 <Link
@@ -132,8 +133,8 @@ export default function NavBar() {
                                     href={item.href}
                                     onClick={() => setIsMenuOpen(false)}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${isActive(item.href)
-                                            ? "bg-amber-500 text-white shadow-md"
-                                            : "text-gray-700 hover:bg-amber-50 hover:text-amber-600"
+                                        ? "bg-amber-500 text-white shadow-md"
+                                        : "text-gray-700 hover:bg-amber-50 hover:text-amber-600"
                                         }`}
                                 >
                                     <item.icon className="text-lg" />

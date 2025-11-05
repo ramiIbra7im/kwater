@@ -15,12 +15,12 @@ export function useLike(user) {
             return { success: false }
         }
 
+        setIsLoading(true)
         try {
-            setIsLoading(true)
             const newLikedState = !currentLikedState
             const newLikesCount = newLikedState ? currentLikes + 1 : currentLikes - 1
 
-            // تنفيذ العملية في الداتابيز
+            // العملية في جدول likes (سيتم تشغيل الـ trigger تلقائياً)
             if (newLikedState) {
                 const { error } = await supabase
                     .from('likes')
@@ -35,12 +35,7 @@ export function useLike(user) {
                 if (error) throw error
             }
 
-            // تحديث عدد الإعجابات في الجدول الرئيسي
-            await supabase
-                .from('posts')
-                .update({ likes_count: newLikesCount })
-                .eq('id', postId)
-
+            // إرجاع النتيجة للتحديث الفوري في الواجهة
             return {
                 success: true,
                 newLikesCount,
@@ -49,7 +44,10 @@ export function useLike(user) {
 
         } catch (error) {
             toast.error("حدث خطأ أثناء تحديث الإعجاب")
-            return { success: false }
+            return {
+                success: false,
+                error: error.message
+            }
         } finally {
             setIsLoading(false)
         }

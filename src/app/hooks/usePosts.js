@@ -8,8 +8,8 @@ export function usePosts(user) {
     const [likedPosts, setLikedPosts] = useState(new Set())
 
     useEffect(() => {
+        fetchPosts()
         if (user) {
-            fetchPosts()
             fetchLikedPosts(user.id)
         }
     }, [user])
@@ -72,10 +72,8 @@ export function usePosts(user) {
         })
     }
 
-    // دالة حذف البوست من الداتابيز والـ state
     const deletePost = async (postId) => {
         try {
-            // حذف من الداتابيز أولاً
             const { error } = await supabase
                 .from('posts')
                 .delete()
@@ -83,10 +81,7 @@ export function usePosts(user) {
 
             if (error) throw error
 
-            // ثم حذف من الـ state
             setPosts(prev => prev.filter(post => post.id !== postId))
-
-            // احذف البوست من likedPosts كمان
             setLikedPosts(prev => {
                 const newSet = new Set(prev)
                 newSet.delete(postId)

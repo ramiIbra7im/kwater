@@ -47,7 +47,6 @@ export default function TopPost() {
 
             setTopPosts(formattedPosts);
         } catch (error) {
-            console.error('Error fetching top posts:', error);
         }
     };
 
@@ -185,10 +184,10 @@ export default function TopPost() {
                                                     <FaHeart className="text-red-400" />
                                                     <span>{formatNumber(post.likes)}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1">
+                                                {/* <div className="flex items-center gap-1">
                                                     <FaEye className="text-blue-400" />
                                                     <span>{formatNumber(post.views)}</span>
-                                                </div>
+                                                </div> */}
                                             </div>
                                         </div>
                                     </div>

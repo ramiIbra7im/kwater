@@ -68,7 +68,6 @@ export default function Categories({
     };
 
     const handleCategoryClick = (categoryValue) => {
-        console.log('Category clicked:', categoryValue);
 
         // ✅ استخدم الـ internal state أولاً
         setInternalSelectedCategory(categoryValue);

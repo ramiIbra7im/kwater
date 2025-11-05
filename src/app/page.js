@@ -1,6 +1,8 @@
+// src/app/page.js
 'use client'
 import { useState, useMemo } from "react"
 import { usePosts } from "./hooks/usePosts"
+import { useLike } from "./hooks/useLike"
 import TopPost from "./top-post/page"
 import Categories from "./categories/page"
 import PostsLoading from "./components/PostsLoading"
@@ -24,14 +26,25 @@ export default function HomePage() {
     deletePost
   } = usePosts(user)
 
+  const { handleLike: likeAction, isLoading: likeLoading } = useLike(user)
+
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
 
-  const handleLike = async (postId, newLikesCount, newLikedState) => {
+  const handleLike = async (postId, currentLikes, currentLikedState) => {
     try {
-      updateLikedPosts(postId, newLikedState)
-      updatePostLikes(postId, newLikesCount)
-    } catch (error) { }
+      const result = await likeAction(postId, currentLikes, currentLikedState)
+
+      if (result.success) {
+        // تحديث الـ state مع البيانات الجديدة من السيرفر
+        updateLikedPosts(postId, result.newLikedState)
+        updatePostLikes(postId, result.newLikesCount)
+      }
+
+      return result
+    } catch (error) {
+      return { success: false }
+    }
   }
 
   const handlePostDelete = (postId) => {
@@ -56,7 +69,6 @@ export default function HomePage() {
     setSelectedCategory("")
   }
 
-  // ✅ تأكد من تمرير الـ setter functions بشكل صحيح
   const categoriesProps = {
     searchTerm,
     setSearchTerm,

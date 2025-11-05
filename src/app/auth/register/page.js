@@ -119,10 +119,7 @@ export default function Register() {
                         }
                     ])
 
-                if (profileError) {
-                    console.error('Profile creation error:', profileError)
-                }
-
+              
                 toast.success('تم إنشاء الحساب بنجاح! يرجى التحقق من بريدك الإلكتروني لتأكيد الحساب.')
 
                 // الانتظار قليلاً قبل التوجيه
@@ -131,7 +128,6 @@ export default function Register() {
                 }, 2000);
             }
         } catch (error) {
-            console.error('Registration error:', error)
             if (error.message.includes('User already registered')) {
                 setErrors({ email: 'هذا البريد الإلكتروني مسجل بالفعل' })
             } else if (error.message.includes('Email rate limit exceeded')) {

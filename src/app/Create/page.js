@@ -19,7 +19,7 @@ export default function CreatePost() {
     const maxChars = 500
 
     useEffect(() => {
-      
+
 
         if (!loading && !user) {
             toast.error("يجب تسجيل الدخول أولاً");
@@ -180,7 +180,7 @@ export default function CreatePost() {
                                     value={content}
                                     onChange={handleContentChange}
                                     placeholder="اكتب ما يدور في خاطرك..."
-                                    className="w-full h-48 border border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none text-lg leading-relaxed bg-gray-50 transition-all"
+                                    className="w-full h-48 border text-blue-950 border-gray-300 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 resize-none text-lg leading-relaxed bg-gray-50 transition-all"
                                 />
                                 <div className="absolute bottom-3 left-3 text-sm text-gray-500">
                                     {charCount}/{maxChars}
@@ -193,7 +193,7 @@ export default function CreatePost() {
                             <select
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value)}
-                                className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
+                                className="w-full border border-gray-300 text-blue-950 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white"
                             >
                                 {categories.map((cat) => (
                                     <option key={cat.value} value={cat.value}>
